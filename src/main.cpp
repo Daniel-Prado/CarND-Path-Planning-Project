@@ -72,18 +72,19 @@ int NextWaypoint(double x, double y, double theta, const vector<double> &maps_x,
 	double heading = atan2((map_y-y),(map_x-x));
 
 	double angle = fabs(theta-heading);
-  angle = min(2*pi() - angle, angle);
 
-  if(angle > pi()/4)
-  {
-    closestWaypoint++;
-  if (closestWaypoint == maps_x.size())
-  {
-    closestWaypoint = 0;
-  }
-  }
+	angle = min(2*pi() - angle, angle);
 
-  return closestWaypoint;
+	if(angle > pi()/4)
+	{
+    	closestWaypoint++;
+    	if (closestWaypoint == maps_x.size())
+    	{
+    		closestWaypoint = 0;
+    	}
+    }
+
+    return closestWaypoint;
 }
 
 // Transform from Cartesian x,y coordinates to Frenet s,d coordinates
