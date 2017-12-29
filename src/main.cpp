@@ -200,7 +200,7 @@ int main() {
 
     int lane = 1; // my lane (central)
 
-    double ref_vel = 49.5; // just below the limit.
+    double ref_vel = 0.0; // initial velocity.
 
 
 	h.onMessage([&lane,&ref_vel,&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
@@ -270,12 +270,23 @@ int main() {
                             if ((check_car_s > my_car_s) && (check_car_s - my_car_s) < 30) {
                                 // do some logic here
                                 // reduce velocity or activate flag to change lanes
-                                ref_vel = check_speed * 2.24;
+                                // ref_vel = check_speed * 2.24;
                                 too_close = true;
                             }
                         }
 
                     }
+
+                    // Adjust car speed depending on conditions
+                    if (too_close){
+
+                        ref_vel -= .5;
+                    }
+                    else if (ref_vel < 49.5) {
+
+                        ref_vel += .5;
+                    }
+
 
                     // Create a list of widely spaced (x,y) waypoints, evenly spaced at 30m.
                     // Later we will interpolate waypoints with a spline and fill it in with more points 
