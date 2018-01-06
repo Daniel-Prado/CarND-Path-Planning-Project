@@ -10,7 +10,7 @@
 #include "json.hpp"
 #include "spline.h"
 
-#define FIX_SAFETY_DISTANCE 30
+#define FIX_SAFETY_DISTANCE 20
 
 using namespace std;
 
@@ -275,6 +275,17 @@ int main() {
                                 // reduce velocity or activate flag to change lanes
                                 // ref_vel = check_speed * 2.24;
                                 too_close = true;
+                                if (lane == 0)
+                                {
+                                    lane = 1;
+                                    cout << "changing to lane 1" << endl;
+
+                                }
+                                else if (lane == 1)
+                                {
+                                    lane = 0;
+                                    cout << "changing to lane 0" << endl;
+                                }
                             }
                         }
 
@@ -341,9 +352,9 @@ int main() {
                     // Now we need to add more points.
 
                     // In Frenet, add evenly 30m spaced points ahead of the starting reference
-                    vector<double> next_wp30m = getXY(car_s+30,(2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
-                    vector<double> next_wp60m = getXY(car_s+60,(2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
-                    vector<double> next_wp90m = getXY(car_s+90,(2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+                    vector<double> next_wp30m = getXY(car_s+45,(2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+                    vector<double> next_wp60m = getXY(car_s+90,(2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+                    vector<double> next_wp90m = getXY(car_s+135,(2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
 
                     ptsx.push_back(next_wp30m[0]);
                     ptsx.push_back(next_wp60m[0]);
@@ -394,7 +405,9 @@ int main() {
 
                     double N = target_dist / (.02 * ref_vel/2.24);
 
+                    cout << "spline points: " << 50 - previous_path_x.size();
                     for(int i = 1; i <= 50 - previous_path_x.size(); i++) {
+
                         double x_spline = x_add_on + target_x / N;
                         double y_spline = s(x_spline);
 
