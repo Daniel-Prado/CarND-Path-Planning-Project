@@ -10,6 +10,8 @@
 #include "json.hpp"
 #include "spline.h"
 
+#define FIX_SAFETY_DISTANCE 30
+
 using namespace std;
 
 // for convenience
@@ -265,9 +267,10 @@ int main() {
                             double check_car_s = sf_it[5];
 
                             check_car_s += ((double)prev_size * .02*check_speed);
+                            double safety_distance = FIX_SAFETY_DISTANCE;
 
                             //check s values greater than mine and s gap
-                            if ((check_car_s > my_car_s) && (check_car_s - my_car_s) < 30) {
+                            if ((check_car_s > my_car_s) && (check_car_s - my_car_s) < safety_distance) {
                                 // do some logic here
                                 // reduce velocity or activate flag to change lanes
                                 // ref_vel = check_speed * 2.24;
@@ -280,11 +283,13 @@ int main() {
                     // Adjust car speed depending on conditions
                     if (too_close){
 
-                        ref_vel -= .5;
+                        // taking into account that the simulator goes at 50Hz, so that every point is separated 0.02s,
+                        // then substracting 0.224 MPH represents an acceleration of about 5 m/s2, which is below the 10m/s2 limit
+                        ref_vel -= .224;
                     }
                     else if (ref_vel < 49.5) {
 
-                        ref_vel += .5;
+                        ref_vel += .224;
                     }
 
 
@@ -336,9 +341,9 @@ int main() {
                     // Now we need to add more points.
 
                     // In Frenet, add evenly 30m spaced points ahead of the starting reference
-                    vector<double> next_wp30m = getXY(car_s+45,(2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
-                    vector<double> next_wp60m = getXY(car_s+90,(2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
-                    vector<double> next_wp90m = getXY(car_s+135,(2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+                    vector<double> next_wp30m = getXY(car_s+30,(2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+                    vector<double> next_wp60m = getXY(car_s+60,(2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+                    vector<double> next_wp90m = getXY(car_s+90,(2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
 
                     ptsx.push_back(next_wp30m[0]);
                     ptsx.push_back(next_wp60m[0]);
@@ -379,6 +384,8 @@ int main() {
                     }
 
                     // We calculate how to break up spline points so that we travel at our desired reference velocity.
+                    // NOTE this assumes constant velocity, even if the ref_vel could be accelerating or decelerating even at
+                    // 10m/s2 . Maybe the code can be improved taking this into account, so that the points will not be evenly spaced.
                     double target_x = 30.0;
                     double target_y = s(target_x);
                     double target_dist = sqrt(target_x * target_x + target_y * target_y);
