@@ -11,6 +11,7 @@
 #include "spline.h"
 
 #define FIX_SAFETY_DISTANCE 20
+#define HORIZON 1
 
 using namespace std;
 
@@ -259,6 +260,34 @@ int main() {
                         my_car_s = car_s;
 
                     bool too_close = false;
+
+
+                    Vehicle ego;
+                    vector<Vehicle> vehicles;
+
+                    ego.set_status_ego(car_s, car_d, car_x, car_y, car_yaw, car_speed/2.24);
+                    
+                    for(auto &sf_it : sensor_fusion) {
+                        int id    = sensor_fusion[i][0];
+                        double x  = sensor_fusion[i][1];
+                        double y  = sensor_fusion[i][2];
+                        double vx = sensor_fusion[i][3];
+                        double vy = sensor_fusion[i][4];
+                        double s  = sensor_fusion[i][5];
+                        double d  = sensor_fusion[i][6];
+
+                        Vehicle other_vehicle(id);
+
+                        other_vehicle.set_status(s, d, sqrt( vx*vx + vy*vy ));
+
+                        vehicles.push_back(other_vehicle);
+                    }
+
+                    BehaviorPlanner bp(ego, vehicles);
+                    vector<Vehicle> predictions = bp.generate_predictions(HORIZON);
+
+
+
 
                     // Determine the ref_v to use based on the sorrounding vehicles information incuded in the sensor fusion.
                     for(auto &sf_it : sensor_fusion) {
