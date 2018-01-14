@@ -8,10 +8,10 @@
 #include "Eigen-3.3/Eigen/Core"
 #include "Eigen-3.3/Eigen/QR"
 #include "json.hpp"
-#include "spline.h"
 
-
+#include "RoadMap.h"
 #include "TrajectoryGenerator.h"
+
 
 #define FIX_SAFETY_DISTANCE 20
 
@@ -176,50 +176,24 @@ vector<double> previous_path_y;
 int main() {
 	uWS::Hub h;
 
-    // Load up map values for waypoint's x,y,s and d normalized normal vectors
-	vector<double> map_waypoints_x;
-	vector<double> map_waypoints_y;
-	vector<double> map_waypoints_s;
-	vector<double> map_waypoints_dx;
-	vector<double> map_waypoints_dy;
-
     // Waypoint map to read from
 	string map_file_ = "../data/highway_map.csv";
+
+	RoadMap road(map_file_);
+
     
     // The max s value before wrapping around the track back to 0
 	double max_s = 6945.554;
-
-	ifstream in_map_(map_file_.c_str(), ifstream::in);
-
-	string line;
-	while (getline(in_map_, line)) {
-		istringstream iss(line);
-		double x;
-		double y;
-		float s;
-		float d_x;
-		float d_y;
-		iss >> x;
-		iss >> y;
-		iss >> s;
-		iss >> d_x;
-		iss >> d_y;
-		map_waypoints_x.push_back(x);
-		map_waypoints_y.push_back(y);
-		map_waypoints_s.push_back(s);
-		map_waypoints_dx.push_back(d_x);
-		map_waypoints_dy.push_back(d_y);
-	}
 
     int lane = 1; // my lane (central)
 
     double ref_vel = 0.0; // initial velocity.
 
 
-    TrajectoryGenerator traj_generator;
+    TrajectoryGenerator traj_generator(road);
 
 
-	h.onMessage([&traj_generator,&lane,&ref_vel,&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
+	h.onMessage([&road, &traj_generator,&lane,&ref_vel](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
 		uWS::OpCode opCode) {
 	// "42" at the start of the message means there's a websocket message event.
 	// The 4 signifies a websocket message
@@ -258,14 +232,17 @@ int main() {
 					auto sensor_fusion = j[1]["sensor_fusion"];
 
 					int prev_size = previous_path_x.size();
+					cout << "initial prev_size: " << prev_size << endl;
 
                     // position of my car in future.
                     double my_car_s;
                     if (prev_size > 0) {
                         my_car_s = end_path_s;
+                        cout << "end_path_s:" << end_path_s << endl;
                     }
                     else
                         my_car_s = car_s;
+                    	cout << "initial car_s: " << car_s << endl;
 
                     bool too_close = false;
 
@@ -274,7 +251,8 @@ int main() {
                     //The previous_path_x provided by the simulator contains the points not yet visited by the car,
                     //however our 'locally' stored previous_path_s and _d stores the total 50 points, so let's
                     //aling that.
-                    traj_generator.update_previous_path(previous_path_x.size());
+                    traj_generator.update_previous_path(prev_size);
+                    cout << "AAA" << endl;
 
 
 
@@ -314,36 +292,47 @@ int main() {
                     }
 
                     // Adjust car speed depending on conditions
+                    
                     if (too_close){
 
                         // taking into account that the simulator goes at 50Hz, so that every point is separated 0.02s,
                         // then substracting 0.224 MPH represents an acceleration of about 5 m/s2, which is below the 10m/s2 limit
                         ref_vel -= .224;
                     }
-                    else if (ref_vel < 49.5) {
+                    else if (ref_vel < 48) {
 
                         ref_vel += .224;
                     }
-                    //int prev_size, double ref_vel, int lane, double car_s, double car_d)
-                    vector<vector<double>> next_frenet_traj = traj_generator.get_new_frenet_trajectory(prev_size, ref_vel, lane, car_s, car_d);
+                    
+  					cout << "BBB" << endl;
+                    vector<vector<double>> next_frenet_traj = traj_generator.get_new_frenet_trajectory(prev_size, ref_vel, lane, my_car_s, car_d);
                     vector<double> next_s = next_frenet_traj[0];
                     vector<double> next_d = next_frenet_traj[1];
+                    cout << "next_s[0]:" << next_s[0] << "next_d[0]:" << next_d[0] << endl;
 
                     vector<double> next_x_vals;
                     vector<double> next_y_vals;
 
-                    for (int i = 0; i < previous_path_x.size(); i++) {
+                    
+                    for (int i = 0; i < prev_size; i++) {
                         next_x_vals.push_back(previous_path_x[i]);
                         next_y_vals.push_back(previous_path_y[i]);
                     }
 
-                    for(int i = previous_path_x.size(); i < next_s.size(); i++) {
-                        vector<double> next_point = getXY(next_s[i], next_d[i], map_waypoints_s, map_waypoints_x, map_waypoints_y);
+                    for(int i = prev_size; i < next_s.size(); i++) {
+                    	
+                        //vector<double> next_point = getXY(next_s[i], next_d[i], map_waypoints_s, map_waypoints_x, map_waypoints_y);
+                        vector<double> next_point = road.get_splined_xy(next_s[i], next_d[i]);
                         next_x_vals.push_back(next_point[0]);
                         next_y_vals.push_back(next_point[1]);
+                        if (i >= 47)
+                        	cout << "next_s[" << i << "]: " << next_s[i] << " ";
                     }
+                    cout << endl;
 
                     json msgJson;
+
+                    cout << "size of next_x_vals sent: " << next_x_vals.size() << endl;
 
 					msgJson["next_x"] = next_x_vals;
 					msgJson["next_y"] = next_y_vals;
