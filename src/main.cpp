@@ -13,9 +13,6 @@
 #include "TrajectoryGenerator.h"
 
 
-#define FIX_SAFETY_DISTANCE 20
-#define HORIZON 1
-
 using namespace std;
 
 // for convenience
@@ -45,6 +42,17 @@ double distance(double x1, double y1, double x2, double y2)
 {
 	return sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1));
 }
+
+inline vector<double> xy_to_polar(double x, double y) {
+  
+  double speed = sqrt(x * x + y * y);
+  double theta = atan2(y, x);
+  
+  if(theta < 0) theta += 2 * M_PI;
+  
+  return {speed, theta};
+}
+
 int ClosestWaypoint(double x, double y, const vector<double> &maps_x, const vector<double> &maps_y)
 {
 
@@ -193,6 +201,10 @@ int main() {
 
     TrajectoryGenerator traj_generator(road);
 
+    BehaviorPlanner b_planner(road, traj_generator, lane);
+
+    Vehicle ego(999);
+
 
 	h.onMessage([&road, &traj_generator,&lane,&ref_vel](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
 		uWS::OpCode opCode) {
@@ -247,10 +259,37 @@ int main() {
 
                     bool too_close = false;
 
-                    Vehicle ego;
-                    vector<Vehicle> vehicles;
+                    
+                    /**************************************************************************
+                     **   STEP 1 - Update ego vehicle position along the trajectory
+                     **************************************************************************/
+                    if (traj_generator.get_length() == 0 || previous_path_x.size() == 0) {
+                        // In general we will update our current position based on the the previously calculated
+                        // frenet trajectory, that should be equivalent to the XY trajectory previous_path returned by
+                        // the simulator, but not quite, that's why we stick with our stored frened in memory.
+                        size_t steps_consumed = traj_generator.get_length() - previous_path_x.size();
+                        vector<vector<double>> trajectory = traj_generator.get_current_frenet_trajectory();
+                        ego.move_along_trajectory(trajectory, steps_consumed);
+                    } else {
+                        // If there is not previous_trajectory, we just update the position based on the 
+                        // data from the simulator.
+                        ego.update_pos(car_s, car_d);
+                        auto frenet_vel = road.get_frenet_vel(car_s, car_d, car_speed/2.24, deg2rad(car_yaw));
+                        ego.update_vel(frenet_vel[0], frenet_vel[1]);
+                    }
 
-                    ego.set_status_ego(car_s, car_d, car_x, car_y, car_yaw, car_speed/2.24);
+                    /*************************************************************************************
+                    **  STEP 2 - Refresh previous Path to be used by the Trajectory Generator and Behavior Planner
+                    **************************************************************************************/
+                    // The previous_path_x provided by the simulator contains the points not yet 
+                    // visited by the car, however our 'locally' stored previous_path_s and _d stores 
+                    // the total 50 points, so let's aling that.
+                    traj_generator.update_previous_path(prev_size);
+
+                    /**************************************************************************
+                     **  STEP 3 - Load sensor fusion data
+                     **************************************************************************/
+                    vector<Vehicle> vehicles;
                     
                     for(auto &sf_it : sensor_fusion) {
                         int id    = sensor_fusion[i][0];
@@ -262,73 +301,27 @@ int main() {
                         double d  = sensor_fusion[i][6];
 
                         Vehicle other_vehicle(id);
+                        other_vehicle.update_pos(s, d);
 
-                        other_vehicle.set_status(s, d, sqrt( vx*vx + vy*vy ));
+                        auto polar_vel = xy_to_polar(vx, vy);
+                        auto frenet_vel = road.get_frenet_vel(s, d, polar_vel[0], polar_vel[1]);
+                        other_vehicle.update_vel(frenet_vel[0], frenet_vel[1]);
 
                         vehicles.push_back(other_vehicle);
                     }
 
-                    BehaviorPlanner bp(ego, vehicles);
-                    vector<Vehicle> predictions = bp.generate_predictions(HORIZON);
+                    /**************************************************************************
+                     **  STEP 4 - Predict vehicles movement and decide Plan based on predictions
+                     **************************************************************************/
+                    //b_planner.update_vehicles(ego, vehicles);
+                    auto predictions = b_planner.make_predictions(vehicles, N_STEPS_HORIZON);
+                    auto plan = b_planner.make_plan(ego, predictions);
 
-
-
-                    //Refresh previous Path to used by the Trajectory Generator and Behavior Planner
-                    //The previous_path_x provided by the simulator contains the points not yet visited by the car,
-                    //however our 'locally' stored previous_path_s and _d stores the total 50 points, so let's
-                    //aling that.
-                    traj_generator.update_previous_path(prev_size);
-                    cout << "AAA" << endl;
-
-                    // Determine the ref_v to use based on the sorrounding vehicles information incuded in the sensor fusion.
-                    for(auto &sf_it : sensor_fusion) {
-                        // if car is in my lane
-                        float d = sf_it[6];
-                        if ( d < (2+4*lane+2) && d > (2+4*lane-2) ) {
-
-                            double vx = sf_it[3];
-                            double vy = sf_it[4];
-                            double check_speed = sqrt( vx*vx + vy*vy);
-                            double check_car_s = sf_it[5];
-
-                            check_car_s += ((double)prev_size * .02*check_speed);
-                            double safety_distance = FIX_SAFETY_DISTANCE;
-
-                            //check s values greater than mine and s gap
-                            if ((check_car_s > my_car_s) && (check_car_s - my_car_s) < safety_distance) {
-                                // do some logic here
-                                // reduce velocity or activate flag to change lanes
-                                // ref_vel = check_speed * 2.24;
-                                too_close = true;
-                                if (lane == 0)
-                                {
-                                    lane = 1;
-
-                                }
-                                else if (lane == 1)
-                                {
-                                    lane = 0;
-                                }
-                            }
-                        }
-
-                    }
-
-                    // Adjust car speed depending on conditions
-                    
-                    if (too_close){
-
-                        // taking into account that the simulator goes at 50Hz, so that every point is separated 0.02s,
-                        // then substracting 0.224 MPH represents an acceleration of about 5 m/s2, which is below the 10m/s2 limit
-                        ref_vel -= .224;
-                    }
-                    else if (ref_vel < 48) {
-
-                        ref_vel += .224;
-                    }
-                    
-  					cout << "BBB" << endl;
-                    vector<vector<double>> next_frenet_traj = traj_generator.get_new_frenet_trajectory(prev_size, ref_vel, lane, my_car_s, car_d);
+                    /**************************************************************************
+                     **  STEP 5 - Get an updated trajectory based on the new plan
+                     **************************************************************************/                    
+                    vector<vector<double>> next_frenet_traj = traj_generator.get_new_trajectory_for_plan(prev_size, plan);
+                    //traj_generator.get_new_frenet_trajectory(prev_size, ref_vel, lane, my_car_s, car_d);
                     vector<double> next_s = next_frenet_traj[0];
                     vector<double> next_d = next_frenet_traj[1];
                     cout << "next_s[0]:" << next_s[0] << "next_d[0]:" << next_d[0] << endl;

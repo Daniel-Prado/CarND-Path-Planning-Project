@@ -1,5 +1,5 @@
-#ifndef TRAJECTORY_GENERATOR_H
-#define TRAJECTORY_GENERATOR_H
+#ifndef DP_TRAJECTORY_GENERATOR_H
+#define DP_TRAJECTORY_GENERATOR_H
 
 #include <iostream>
 #include <string>

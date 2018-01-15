@@ -6,15 +6,23 @@
 #include <string>
 #include <iterator>
 #include "cost.h"
+#include "RoadMap.h"
 
 /**
  * Initializes Vehicle
  */
 
 Vehicle::Vehicle(const int identifier = 999){
-    this-> id = identifier;
+    this->id = identifier;
+    this->s = 0;
+    this->s_dot = 0;
+    this->s_ddot = 0;
+    this->d = 0;
+    this->d_dot = 0;
+    this->d_ddot = 0;
 }
 
+/*
 // Set status method (used only for EGO car)
 Vehicle::set_status_ego(const double s, const double d, const double x, const double y, const double yaw, const double v) {
     this->s = s;
@@ -44,8 +52,29 @@ Vehicle::set_status(const double s, const double d, double v) {
     this->current_lane = this->get_lane(d);
 
 }
+*/
 
-int Vehicle::get_lane(const double d) {
+void Vehicle::update_pos(double s, double d) {
+    this->s = s;
+    this->d = d;
+}
+
+void Vehicle::update_vel(double s_dot, double d_dot) {
+    this->s_dot = s_dot;
+    this->d_dot = d_dot;
+}
+
+Vehicle Vehicle::position_after_n_seconds(double incr_time) {
+  Vehicle future_vehicle = *this; // Copy asignment, state is a new object, copy of this.
+  
+  //  IN THIS FIRST IMPLEMENTATION WE ASSUME CONSTANT VELOCITY OF OTHER CARS
+  //  AND NO LANE CHANGES. (Constant s speed, constant d position)
+  future_vehicle.s = s + incr_time * s_dot;
+  
+  return future_vehicle;
+}
+
+static int Vehicle::get_lane(const double d) {
     
     int lane;
 
@@ -60,40 +89,31 @@ int Vehicle::get_lane(const double d) {
     return lane;
 }
 
-Vehicle Vehicle::get_prediction(int horizon = 1) {
-    /*
-    Generates predictions for non-ego vehicles to be used
-    in trajectory generation for the ego vehicle.
-    horizon: increment time to be predicted, in seconds. One second by default.
-
-    IN THIS FIRST IMPLEMENTATION WE ASSUME CONSTANT VELOCITY OF OTHER CARS
-    AND NO LANE CHANGES.
-    */
-
-    double s_horizon = this->s + (this->speed * horizon)
-
-    Vehicle vehicle_pred;
-
-    vehicle_pred.set_status(s_horizon, this->d, this->speed)
-    return vehicle_pred;
-
-}
-
-
-
-
-Vehicle::Vehicle(int lane, float s, float v, float a, string state) {
-
-    this->lane = lane;
-    this->s = s;
-    this->v = v;
-    this->a = a;
-    this->state = state;
-    max_acceleration = -1;
-
-}
-
 Vehicle::~Vehicle() {}
+
+void Vehicle::follow_trajectory(const vector<double>& traj_s, const vector<double>& traj_d, int steps) {
+  
+  long idx = min(steps, traj_s.size()) - 1;
+  
+  if(idx > 0) {
+    
+    double s_dot = circuitDiff(path_s[idx], path_s[idx - 1]) / dt;
+    double d_dot = (path_d[idx] - path_d[idx - 1]) / dt;
+    this->s_ddot = (s_dot - this->s_dot) / ((idx + 1) * dt);
+    this->d_ddot = (d_dot - this->d_dot) / ((idx + 1) * dt);
+    updatePos(path_s[idx], path_d[idx]);
+    updateVelocity(s_dot, d_dot);
+  
+  } else if(idx == 0) {
+    double s_dot = circuitDiff(path_s[idx], this->s) / dt;
+    double d_dot = (path_d[idx] - this->d) / dt;
+    this->s_ddot = (s_dot - this->s_dot) / dt;
+    this->d_ddot = (d_dot - this->d_dot) / dt;
+    updatePos(path_s[idx], path_d[idx]);
+    updateVelocity(s_dot, d_dot);
+  
+    }
+}
 
 
 vector<Vehicle> Vehicle::choose_next_state(map<int, vector<Vehicle>> predictions) {

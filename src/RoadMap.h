@@ -24,6 +24,7 @@ public:
     // Transform from Frenet s,d coordinates to Map coordinates X,Y based on splines that connect the track waypoints.
     vector<double> get_splined_xy(double s, double d);
 
+    vector<double> get_frenet_vel(double s, double d, double speed, double car_to_map_yaw)
 
     vector<double> map_waypoints_x;
     vector<double> map_waypoints_y;

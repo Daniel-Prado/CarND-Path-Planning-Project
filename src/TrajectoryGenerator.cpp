@@ -32,6 +32,10 @@ void TrajectoryGenerator::update_previous_path(size_t prev_path_length) {
     }
 }
 
+vector<vector<double>> TrajectoryGenerator::getTrajectory() const {
+  return {previous_path_s, previous_path_d};
+}
+
 vector<vector<double>> TrajectoryGenerator::get_new_frenet_trajectory(int prev_size, double ref_vel, int lane, double car_s, double car_d) {
 
     // Create a list of widely spaced (s,d) waypoints, evenly spaced at 30m.
