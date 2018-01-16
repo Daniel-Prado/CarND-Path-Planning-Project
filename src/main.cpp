@@ -269,7 +269,7 @@ int main() {
                         // the simulator, but not quite, that's why we stick with our stored frened in memory.
                         size_t steps_consumed = traj_generator.get_length() - previous_path_x.size();
                         vector<vector<double>> trajectory = traj_generator.get_current_frenet_trajectory();
-                        ego.move_along_trajectory(trajectory, steps_consumed);
+                        ego.move_along_trajectory(trajectory[0], trajectory[1], steps_consumed);
                     } else {
                         // If there is not previous_trajectory, we just update the position based on the 
                         // data from the simulator.
@@ -283,7 +283,7 @@ int main() {
                     **************************************************************************************/
                     // The previous_path_x provided by the simulator contains the points not yet 
                     // visited by the car, however our 'locally' stored previous_path_s and _d stores 
-                    // the total 50 points, so let's aling that.
+                    // the total N points, so let's aling that.
                     traj_generator.update_previous_path(prev_size);
 
                     /**************************************************************************
@@ -313,42 +313,19 @@ int main() {
                     /**************************************************************************
                      **  STEP 4 - Predict vehicles movement and decide Plan based on predictions
                      **************************************************************************/
-                    //b_planner.update_vehicles(ego, vehicles);
+  
                     auto predictions = b_planner.make_predictions(vehicles, N_STEPS_HORIZON);
                     auto plan = b_planner.make_plan(ego, predictions);
 
                     /**************************************************************************
                      **  STEP 5 - Get an updated trajectory based on the new plan
                      **************************************************************************/                    
-                    vector<vector<double>> next_frenet_traj = traj_generator.get_new_trajectory_for_plan(prev_size, plan);
-                    //traj_generator.get_new_frenet_trajectory(prev_size, ref_vel, lane, my_car_s, car_d);
-                    vector<double> next_s = next_frenet_traj[0];
-                    vector<double> next_d = next_frenet_traj[1];
-                    cout << "next_s[0]:" << next_s[0] << "next_d[0]:" << next_d[0] << endl;
-
-                    vector<double> next_x_vals;
-                    vector<double> next_y_vals;
-
-                    
-                    for (int i = 0; i < prev_size; i++) {
-                        next_x_vals.push_back(previous_path_x[i]);
-                        next_y_vals.push_back(previous_path_y[i]);
-                    }
-
-                    for(int i = prev_size; i < next_s.size(); i++) {
-                    	
-                        //vector<double> next_point = getXY(next_s[i], next_d[i], map_waypoints_s, map_waypoints_x, map_waypoints_y);
-                        vector<double> next_point = road.get_splined_xy(next_s[i], next_d[i]);
-                        next_x_vals.push_back(next_point[0]);
-                        next_y_vals.push_back(next_point[1]);
-                        if (i >= 47)
-                        	cout << "next_s[" << i << "]: " << next_s[i] << " ";
-                    }
-                    cout << endl;
+                    vector<vector<double>> next_XY_traj = traj_generator.update_trajectory_for_plan(plan);
+ 
+                    vector<double> next_x_vals = next_XY_traj[0];
+                    vector<double> next_y_vals = next_XY_traj[1];
 
                     json msgJson;
-
-                    cout << "size of next_x_vals sent: " << next_x_vals.size() << endl;
 
 					msgJson["next_x"] = next_x_vals;
 					msgJson["next_y"] = next_y_vals;

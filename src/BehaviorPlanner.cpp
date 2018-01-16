@@ -57,7 +57,7 @@ vector<Vehicle> BehaviorPlanner::generate_prediction(Vehicle& vehicle, int horiz
 }
 
 
-vector<Vehicle> BehaviorPlanner::make_plan(Vehicle& ego, vector<vector<Vehicle>>& predictions) {
+vector<Vehicle> BehaviorPlanner::make_plan(const Vehicle& ego, const vector<vector<Vehicle>>& predictions) {
 
     float cost;
     vector<float> costs;
@@ -152,7 +152,7 @@ vector<Vehicle> BehaviorPlanner::keep_lane_trajectory(Vehicle& ego, vector<vecto
 
 }
 
-vector<Vehicle> BehaviorPlanner::find_vehicle_ahead_in_lane(int lane, double s, const vector<vector<Car>> &predictions) {
+vector<Vehicle> BehaviorPlanner::find_vehicle_ahead_in_lane(int lane, double s, const vector<vector<Vehicle>> &predictions) {
 
     double car_ahead_dist = 6945.554; // max s of the circuit.
 
@@ -213,40 +213,42 @@ Vehicle BehaviorPlanner::get_desired_traj_end_position(int desired_lane, Vehicle
 
 vector<Vehicle> BehaviorPlanner::get_desired_trajectory(Vehicle car_at_start, Vehicle car_at_goal, int reaction_steps) {
 
-    vector<Vehicle> trajectory = this->followTrajectory(car_at_start, reaction_steps);
+    vector<Vehicle> trajectory = this->follow_old_trajectory(car_at_start, reaction_steps);
     int n_future_steps = TRAJ_N_STEPS - trajectory.size();
 
-    if(!trajectory.empty()) {
-        car_at_reaction = trajectory.back();
-    }
+    if(!trajectory.empty())
+        car_at_start_ii = trajectory.back();
+    else
+        car_at_start_ii = car_at_start;
+
     
     Vehicle veh;
-    vector<vector<double>> traj_second = this->_traj_gen.generate(car_at_start, car_at_goal, n_future_steps);
+    vector<vector<double>> traj_second = this->_traj_gen.generate_new_trajectory(trajectory, car_at_start_ii, car_at_goal, n_future_steps);
     
     for(int i = 1; i <= n_future_steps; i++) {
         veh = car_at_start;
-        veh.follow_trajectory(traj_second[0], traj_second[1], i);
-        trajectory.emplace_back(veh);
+        veh.move_along_trajectory(traj_second[0], traj_second[1], i);
+        trajectory.push_back(veh);
     }
 
     return trajectory;
 }
 
-vector<Car> BehaviorPlanner::followTrajectory(Car start, size_t steps) const {
-  // Limit the delay to the length of old_path_s
-  vector<vector<double>> head = traj.getTrajectory();
-  size_t delay = min(traj.getTrajectoryLength(), steps);
+vector<Vehicle> BehaviorPlanner::follow_old_trajectory(Vehicle car_at_start, int n_reaction_steps) {
 
-  vector<Car> path;
-  Car curr;
-  // Move the car forward
-  for(size_t i = 1; i <= delay; i++) {
-    curr = start;
-    curr.followTrajectory(head[0], head[1], i);
-    path.emplace_back(curr);
+  vector<vector<double>> old_traj = this->_traj_gen.getTrajectory();
+  int steps = min(old_traj.size(), n_reaction_steps);
+
+  vector<Vehicle> trajectory;
+  Vehicle veh;
+  // The car continues the old trajectory until the new trajectory starts after n_reaction_steps.
+  for(int i = 1; i <= steps; i++) {
+    veh = car_at_start;
+    veh.move_along_trajectory(old_traj[0], old_traj[1], i);
+    trajectory.push_back(veh);
   }
 
-  return path;
+  return trajectory;
 }
 
 vector<vector<Vehicle>> BehaviorPlanner::make_predictions(const vector<Vehicle> &vehicles, int horizon_steps) {
@@ -272,8 +274,9 @@ vector<Vehicle> BehaviorPlanner::generate_prediction(Vehicle &vehicle, int horiz
 
 
 
-float BehaviorPlanner::calculate_cost(vector<Vehicle> predictions, Maneuver maneuver) {
+float BehaviorPlanner::calculate_cost(vector<Vehicle> predictions, vector<Vehicle>& traj) {
 
+    return 0.0;
 
 
 

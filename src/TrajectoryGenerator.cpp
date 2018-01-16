@@ -3,8 +3,6 @@
 
 TrajectoryGenerator::TrajectoryGenerator(RoadMap& road) {
     this->_road = &road;
-
-
 }
 
 TrajectoryGenerator::~TrajectoryGenerator() {
@@ -32,10 +30,112 @@ void TrajectoryGenerator::update_previous_path(size_t prev_path_length) {
     }
 }
 
-vector<vector<double>> TrajectoryGenerator::getTrajectory() const {
-  return {previous_path_s, previous_path_d};
+vector<vector<double>> TrajectoryGenerator::get_trajectory() {
+    return {previous_path_s, previous_path_d};
 }
 
+vector<vector<double>> TrajectoryGenerator::generate_new_trajectory(vector<Vehicle>& prev_trajectory, Vehicle& car_at_start, Vehicle& car_at_goal, const int n_steps) {
+
+    // Create a list of widely spaced (s,d) waypoints, evenly spaced at 30m.
+    // Later we will interpolate waypoints with a spline and fill it in with more points 
+    vector<double> pts_s;
+    vector<double> pts_d;
+
+    // Reference s,d
+    // either we will reference the starting point as where the car is or at the previous path end point.
+    double ref_s = car_at_start.s;
+    double ref_d = car_at_start.d;
+
+    int prev_size = prev_trajectory.size();
+
+    // if previous path is almost empty, use the car as starting reference.
+    if (prev_size < 2) {
+        // use two points that nake the path tangent to the car.
+        // This will be executed only at the start.
+        double prev_car_s = ref_s - 1;
+        double prev_car_d = ref_d;
+
+        pts_s.push_back(prev_car_s);
+        pts_s.push_back(ref_s);
+
+        pts_d.push_back(prev_car_d);
+        pts_d.push_back(ref_d);
+    }
+    else {
+        // use the previous path end point as a starting reference
+        double ref_s_prev = prev_trajectory[prev_size-2].s;
+        double ref_d_prev = prev_trajectory[prev_size-2].d;
+
+        // use two points that make the path tangent to the previous path's end point slope.
+        pts_s.push_back(ref_s_prev);
+        pts_s.push_back(ref_s);
+
+        pts_d.push_back(ref_d_prev);
+        pts_d.push_back(ref_d);
+
+    }
+
+    // The 3rd point will be the car at goal desired position.
+    pts_s.push_back(car_at_goal.s);
+    pts_d.push_back(car_at_goal.d);
+
+    // 4th and 5th points will be in the same d position as the car_at_goal, 30m away each in s.
+    pts_s.push_back(car_at_goal.s + 30.0);
+    pts_d.push_back(car_at_goal.d);
+    pts_s.push_back(car_at_goal.s + 60.0);
+    pts_d.push_back(car_at_goal.d);
+
+    // Create a spline
+    tk::spline spl;
+    spl.set_points(pts_s, pts_d);
+
+    // Construct trajectory from car_at_start till car_at_goal along the spline.
+    vector<double> next_s_vals;
+    vector<double> next_d_vals;
+
+    // We calculate how to break up spline points so that we travel at our desired reference velocity.
+    // NOTE this assumes constant velocity, even if the ref_vel could be accelerating or decelerating even at
+    // 10m/s2 . Maybe the code can be improved taking this into account, so that the points will not be evenly spaced.
+
+    double t = 0.02 * n_steps;
+    double acc = 2*(car_at_goal.s - car_at_start.s_dot * t) / (t*t);
+
+    for(int i = 1; i <= n_steps; i++) {
+        t = i * 0.02;
+        double s_spline = ref_s + (car_at_start.s_dot * t) + (0.5 * acc * t*t);
+        double d_spline = spl(s_spline);
+
+        next_s_vals.push_back(s_spline);
+        next_d_vals.push_back(d_spline);
+    }
+
+    return {next_s_vals, next_d_vals};
+}
+
+vector<vector<double>> TrajectoryGenerator::update_trajectory_for_plan(const vector<Vehicle>& plan) {
+  
+    previous_path_s.clear();
+    previous_path_d.clear();
+
+    for(const Vehicle& veh_at_step : plan) {
+        previous_path_s.push_back(veh_at_step.s);
+        previous_path_d.push_back(veh_at_step.d);
+    }
+
+    // Convert to map coordinates.
+    vector<double> next_path_x;
+    vector<double> next_path_y;
+
+    for(int i = 0; i < previous_path_s.size(); i++) {
+        const vector<double> &next_point = this->_road.get_splined_xy(previous_path_s[i], previous_path_d[i]);
+
+        next_path_x.push_back(next_point[0]);
+        next_path_y.push_back(next_point[1]);
+    }
+
+    return {next_path_x, next_path_y};
+}
+/*
 vector<vector<double>> TrajectoryGenerator::get_new_frenet_trajectory(int prev_size, double ref_vel, int lane, double car_s, double car_d) {
 
     // Create a list of widely spaced (s,d) waypoints, evenly spaced at 30m.
@@ -161,4 +261,7 @@ vector<vector<double>> TrajectoryGenerator::get_new_frenet_trajectory(int prev_s
     return {next_s_vals, next_d_vals};
 
 }
+*/
+
+
 
