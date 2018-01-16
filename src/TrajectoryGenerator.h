@@ -6,6 +6,7 @@
 #include <vector>
 #include "spline.h"
 #include "RoadMap.h"
+#include "Vehicle.h"
 
 using namespace std;
 
@@ -14,14 +15,16 @@ private:
 	vector<double> previous_path_s;
 	vector<double> previous_path_d;
 
-	RoadMap* _road;
+	RoadMap& _road;
+
 
 public:
-  	TrajectoryGenerator(RoadMap& road);
+  	TrajectoryGenerator(RoadMap& road) : _road(road) {};
   	~TrajectoryGenerator();
 
 	void 					update_previous_path(size_t prev_path_length);
-	vector<vector<double>> 	get_trajectory();
+	vector<vector<double>> 	get_previous_trajectory();
+	size_t 					get_length();
 	vector<vector<double>> 	generate_new_trajectory(vector<Vehicle>& prev_trajectory, Vehicle& car_at_start, Vehicle& car_at_goal, const int n_steps);
 	vector<vector<double>>	update_trajectory_for_plan(const vector<Vehicle>& plan);
 	

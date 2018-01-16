@@ -11,6 +11,7 @@
 
 #include "RoadMap.h"
 #include "TrajectoryGenerator.h"
+#include "BehaviorPlanner.h"
 
 
 using namespace std;
@@ -200,13 +201,11 @@ int main() {
 
 
     TrajectoryGenerator traj_generator(road);
-
     BehaviorPlanner b_planner(road, traj_generator, lane);
-
     Vehicle ego(999);
 
 
-	h.onMessage([&road, &traj_generator,&lane,&ref_vel](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
+	h.onMessage([&ego, &b_planner, &road, &traj_generator,&lane,&ref_vel](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
 		uWS::OpCode opCode) {
 	// "42" at the start of the message means there's a websocket message event.
 	// The 4 signifies a websocket message
@@ -268,7 +267,7 @@ int main() {
                         // frenet trajectory, that should be equivalent to the XY trajectory previous_path returned by
                         // the simulator, but not quite, that's why we stick with our stored frened in memory.
                         size_t steps_consumed = traj_generator.get_length() - previous_path_x.size();
-                        vector<vector<double>> trajectory = traj_generator.get_current_frenet_trajectory();
+                        vector<vector<double>> trajectory = traj_generator.get_previous_trajectory();
                         ego.move_along_trajectory(trajectory[0], trajectory[1], steps_consumed);
                     } else {
                         // If there is not previous_trajectory, we just update the position based on the 
@@ -292,13 +291,13 @@ int main() {
                     vector<Vehicle> vehicles;
                     
                     for(auto &sf_it : sensor_fusion) {
-                        int id    = sensor_fusion[i][0];
-                        double x  = sensor_fusion[i][1];
-                        double y  = sensor_fusion[i][2];
-                        double vx = sensor_fusion[i][3];
-                        double vy = sensor_fusion[i][4];
-                        double s  = sensor_fusion[i][5];
-                        double d  = sensor_fusion[i][6];
+                        int id    = sf_it[0];
+                        double x  = sf_it[1];
+                        double y  = sf_it[2];
+                        double vx = sf_it[3];
+                        double vy = sf_it[4];
+                        double s  = sf_it[5];
+                        double d  = sf_it[6];
 
                         Vehicle other_vehicle(id);
                         other_vehicle.update_pos(s, d);
@@ -314,7 +313,7 @@ int main() {
                      **  STEP 4 - Predict vehicles movement and decide Plan based on predictions
                      **************************************************************************/
   
-                    auto predictions = b_planner.make_predictions(vehicles, N_STEPS_HORIZON);
+                    auto predictions = b_planner.make_predictions(vehicles, TRAJ_N_STEPS);
                     auto plan = b_planner.make_plan(ego, predictions);
 
                     /**************************************************************************

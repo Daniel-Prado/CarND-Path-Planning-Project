@@ -1,15 +1,4 @@
-#include <algorithm>
-#include <iostream>
-#include "vehicle.h"
-#include <cmath>
-#include <map>
-#include <string>
-#include <iterator>
-
-
-/**
- * Initializes Vehicle
- */
+#include "Vehicle.h"
 
 Vehicle::Vehicle(const int identifier){
     this->id = identifier;
@@ -42,12 +31,12 @@ Vehicle Vehicle::position_after_n_seconds(double incr_time) {
   return future_vehicle;
 }
 
-int Vehicle::get_lane() {
+int Vehicle::get_lane() const {
     int lane = Vehicle::get_lane(this->d);
     return lane;
 }
 
-static int Vehicle::get_lane(const double d) {
+int Vehicle::get_lane(const double d) {
     
     int lane;
 
@@ -63,7 +52,7 @@ static int Vehicle::get_lane(const double d) {
 }
 
 
-void Vehicle::move_along_trajectory(const vector<double>& traj_s, const vector<double>& traj_d, int steps) {
+void Vehicle::move_along_trajectory(const vector<double>& traj_s, const vector<double>& traj_d, size_t steps) {
   
   long index = min(steps, traj_s.size()) - 1;
   double dt = 0.02;
@@ -75,17 +64,17 @@ void Vehicle::move_along_trajectory(const vector<double>& traj_s, const vector<d
     this->s_ddot = (s_dot - this->s_dot) / ((index + 1) * dt);
     this->d_ddot = (d_dot - this->d_dot) / ((index + 1) * dt);
     
-    updatePos(traj_s[index], traj_d[index]);
-    updateVelocity(s_dot, d_dot);
+    update_pos(traj_s[index], traj_d[index]);
+    update_vel(s_dot, d_dot);
   
   } else if(index == 0) {
-    double s_dot = circuitDiff(traj_s[index], this->s) / dt;
+    double s_dot = (traj_s[index] - this->s) / dt;
     double d_dot = (traj_d[index] - this->d) / dt;
     this->s_ddot = (s_dot - this->s_dot) / dt;
     this->d_ddot = (d_dot - this->d_dot) / dt;
     
-    updatePos(traj_s[index], traj_d[index]);
-    updateVelocity(s_dot, d_dot);
+    update_pos(traj_s[index], traj_d[index]);
+    update_vel(s_dot, d_dot);
   
     }
 }

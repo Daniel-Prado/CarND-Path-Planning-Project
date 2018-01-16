@@ -88,23 +88,18 @@ RoadMap::RoadMap(string map_file) {
 }
 
 vector<double> RoadMap::get_frenet_vel(double s, double d, double speed, double car_to_map_yaw) {
-  
-  const vector<tk::spline> &curves = getSplines(s, d);
-  double dx = curves[0].deriv(1, s);
-  double dy = curves[1].deriv(1, s);
+    double dx = spl_dx.deriv(1,s);
+    double dy = spl_dy.deriv(1,s);
 
-  double dx = spl_dx.deriv(1,s);
-  double dy = spl_dy.deriv(1,s);
+    double road_to_map_angle = atan2(dy, dx);
+    if(road_to_map_angle < 0) road_to_map_angle += 2 * M_PI;
 
-  double road_to_map_angle = atan2(dy, dx);
-  if(road_to_map_angle < 0) road_to_map_angle += 2 * M_PI;
-  
-  double car_to_road_yaw = car_to_map_yaw - road_to_map_angle;
+    double car_to_road_yaw = car_to_map_yaw - road_to_map_angle;
 
-  double s_dot = fabs(speed * cos(car_to_road_yaw));
-  double d_dot = speed * sin(car_to_road_yaw);
+    double s_dot = fabs(speed * cos(car_to_road_yaw));
+    double d_dot = speed * sin(car_to_road_yaw);
 
-  return {s_dot, d_dot};
+    return {s_dot, d_dot};
 }
 
 RoadMap::~RoadMap() {}

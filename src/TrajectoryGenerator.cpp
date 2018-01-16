@@ -1,10 +1,6 @@
 #include "TrajectoryGenerator.h"
 
 
-TrajectoryGenerator::TrajectoryGenerator(RoadMap& road) {
-    this->_road = &road;
-}
-
 TrajectoryGenerator::~TrajectoryGenerator() {
 }
 
@@ -30,8 +26,12 @@ void TrajectoryGenerator::update_previous_path(size_t prev_path_length) {
     }
 }
 
-vector<vector<double>> TrajectoryGenerator::get_trajectory() {
+vector<vector<double>> TrajectoryGenerator::get_previous_trajectory() {
     return {previous_path_s, previous_path_d};
+}
+
+size_t TrajectoryGenerator::get_length() {
+  return previous_path_s.size();
 }
 
 vector<vector<double>> TrajectoryGenerator::generate_new_trajectory(vector<Vehicle>& prev_trajectory, Vehicle& car_at_start, Vehicle& car_at_goal, const int n_steps) {
