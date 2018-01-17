@@ -31,7 +31,7 @@ vector<vector<double>> TrajectoryGenerator::get_previous_trajectory() {
 }
 
 size_t TrajectoryGenerator::get_length() {
-  return previous_path_s.size();
+    return previous_path_s.size();
 }
 
 vector<vector<double>> TrajectoryGenerator::generate_new_trajectory(vector<Vehicle>& prev_trajectory, Vehicle& car_at_start, Vehicle& car_at_goal, const int n_steps) {
@@ -87,6 +87,13 @@ vector<vector<double>> TrajectoryGenerator::generate_new_trajectory(vector<Vehic
 
     // Create a spline
     tk::spline spl;
+    cout << "SPLINE pts_s: ";
+    for (auto &titi: pts_s)
+    {
+            cout << titi << " ";
+    }
+    cout << endl;
+
     spl.set_points(pts_s, pts_d);
 
     // Construct trajectory from car_at_start till car_at_goal along the spline.
@@ -98,7 +105,7 @@ vector<vector<double>> TrajectoryGenerator::generate_new_trajectory(vector<Vehic
     // 10m/s2 . Maybe the code can be improved taking this into account, so that the points will not be evenly spaced.
 
     double t = 0.02 * n_steps;
-    double acc = 2*(car_at_goal.s - car_at_start.s_dot * t) / (t*t);
+    double acc = 2*(car_at_goal.s - car_at_start.s - car_at_start.s_dot * t) / (t*t);
 
     for(int i = 1; i <= n_steps; i++) {
         t = i * 0.02;

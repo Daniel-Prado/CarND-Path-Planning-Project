@@ -38,7 +38,7 @@ int Vehicle::get_lane() const {
 
 int Vehicle::get_lane(const double d) {
     
-    int lane;
+    int lane = -1; // This represents a car outside of the 3 lanes (for example, in opposite direction)
 
     if (d > 0.0 && d <= 4.0) {
         lane = 0;
@@ -77,4 +77,17 @@ void Vehicle::move_along_trajectory(const vector<double>& traj_s, const vector<d
     update_vel(s_dot, d_dot);
   
     }
+}
+
+std::ostream &operator<<(std::ostream &stream, const Vehicle &veh) {
+  streamsize prev_precision = stream.precision();
+  stream.precision(2);
+  
+  stream << "Vehicle{" <<veh.id<< "}: ";
+  stream << "s(" << fixed << veh.s <<"), s.(" << fixed << veh.s_dot << "), s..(" << fixed << veh.s_ddot <<") ** ";
+  stream << "d(" << fixed << veh.d <<"), d.(" << fixed << veh.d_dot << "), d..(" << fixed << veh.d_ddot <<") ** ";
+  stream << "lane(" << veh.get_lane()<<")";
+  
+  stream.precision(prev_precision);
+  return stream;
 }

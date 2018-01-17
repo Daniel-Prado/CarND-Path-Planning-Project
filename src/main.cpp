@@ -245,28 +245,20 @@ int main() {
 
 					int prev_size = previous_path_x.size();
 					cout << "initial prev_size: " << prev_size << endl;
-
-                    // position of my car in future.
-                    double my_car_s;
-                    if (prev_size > 0) {
-                        my_car_s = end_path_s;
-                        cout << "end_path_s:" << end_path_s << endl;
-                    }
-                    else
-                        my_car_s = car_s;
-                    	cout << "initial car_s: " << car_s << endl;
-
-                    bool too_close = false;
+                    cout << "sim.s: " << car_s << ",  sim.d:" <<car_d<< ", sim.speed: " << car_speed << endl;
 
                     
                     /**************************************************************************
                      **   STEP 1 - Update ego vehicle position along the trajectory
                      **************************************************************************/
-                    if (traj_generator.get_length() == 0 || previous_path_x.size() == 0) {
-                        // In general we will update our current position based on the the previously calculated
-                        // frenet trajectory, that should be equivalent to the XY trajectory previous_path returned by
-                        // the simulator, but not quite, that's why we stick with our stored frened in memory.
-                        size_t steps_consumed = traj_generator.get_length() - previous_path_x.size();
+                    size_t steps_consumed = traj_generator.get_length() - previous_path_x.size();
+                    cout << "steps_consumed: " << steps_consumed << endl;
+                    if (steps_consumed > 0 ) {
+                        // We need to update the current position of the vehicle along the previous trajectory.
+                        // Note that we can do that because we know for sure that the position of the car cannot be outside of the 
+                        // the trajectory we sent to the simulator (except if the car collides).
+                        // The avantage of updating the car's position along the trajectory instead of just taking the fresh data
+                        // from the simulator is that this way we can update the internal ego variables (speed and acceleration).
                         vector<vector<double>> trajectory = traj_generator.get_previous_trajectory();
                         ego.move_along_trajectory(trajectory[0], trajectory[1], steps_consumed);
                     } else {
@@ -274,6 +266,7 @@ int main() {
                         // data from the simulator.
                         ego.update_pos(car_s, car_d);
                         auto frenet_vel = road.get_frenet_vel(car_s, car_d, car_speed/2.24, deg2rad(car_yaw));
+                        cout << "frenet_vel: " << frenet_vel[0] << "#" << frenet_vel[1] << endl;
                         ego.update_vel(frenet_vel[0], frenet_vel[1]);
                     }
 
@@ -283,6 +276,7 @@ int main() {
                     // The previous_path_x provided by the simulator contains the points not yet 
                     // visited by the car, however our 'locally' stored previous_path_s and _d stores 
                     // the total N points, so let's aling that.
+                    cout << "calling traj_generator.update_previous_path(" << prev_size << ");" << endl;
                     traj_generator.update_previous_path(prev_size);
 
                     /**************************************************************************
@@ -299,14 +293,18 @@ int main() {
                         double s  = sf_it[5];
                         double d  = sf_it[6];
 
-                        Vehicle other_vehicle(id);
-                        other_vehicle.update_pos(s, d);
+                        // We consider only cars inside the 3 lanes, not in opposite direction.
+                        if (Vehicle::get_lane(d) != -1) {
+                            Vehicle other_vehicle(id);
+                            other_vehicle.update_pos(s, d);
 
-                        auto polar_vel = xy_to_polar(vx, vy);
-                        auto frenet_vel = road.get_frenet_vel(s, d, polar_vel[0], polar_vel[1]);
-                        other_vehicle.update_vel(frenet_vel[0], frenet_vel[1]);
+                            auto polar_vel = xy_to_polar(vx, vy);
+                            auto frenet_vel = road.get_frenet_vel(s, d, polar_vel[0], polar_vel[1]);
+                            other_vehicle.update_vel(frenet_vel[0], frenet_vel[1]);
+                            //cout << other_vehicle << endl;
+                            vehicles.push_back(other_vehicle);
+                        }
 
-                        vehicles.push_back(other_vehicle);
                     }
 
                     /**************************************************************************
@@ -314,7 +312,14 @@ int main() {
                      **************************************************************************/
   
                     auto predictions = b_planner.make_predictions(vehicles, TRAJ_N_STEPS);
+                    //cout << "predictions of first car : *********************" << endl;
+                    //for(int i=0; i< TRAJ_N_STEPS; i++) {
+                    //    cout << predictions[0][i] << endl;
+                    //}
+
+
                     auto plan = b_planner.make_plan(ego, predictions);
+                    cout << "plan made OK" << endl;
 
                     /**************************************************************************
                      **  STEP 5 - Get an updated trajectory based on the new plan

@@ -55,7 +55,7 @@ vector<Vehicle> BehaviorPlanner::make_plan(const Vehicle& ego, const vector<vect
     */
     //PROVISIONAL /////////
 
-        vector<Vehicle> trajectory = generate_trajectory(LaneStates::KL, ego, predictions);
+        vector<Vehicle> trajectory = this->generate_trajectory(LaneStates::KL, ego, predictions);
         if (trajectory.size() != 0) {
             //cost = calculate_cost(predictions, trajectory);
             //costs.push_back(cost);
@@ -142,7 +142,12 @@ vector<Vehicle> BehaviorPlanner::keep_lane_trajectory(const Vehicle& ego, const 
     // End of classroom quiz code.
     */
 
+
+    cout << "target_lane: " << target_lane << "ego:" << endl;
+    cout << ego << endl;
+    cout << "Desired end position:" << endl;
     Vehicle desired_end_position = this->get_desired_traj_end_position(target_lane, ego, predictions);
+    cout << desired_end_position << endl;
     vector<Vehicle> best_trajectory = this->get_desired_trajectory(ego, desired_end_position, REACTION_STEPS);
 
 
@@ -183,6 +188,7 @@ Vehicle BehaviorPlanner::get_desired_traj_end_position(int desired_lane, Vehicle
     double s_incr = car_at_start.s_dot * time_horizon + 0.5 * acc * pow(time_horizon, 2);
     
     if (!car_ahead_predictions.empty()) {
+        cout << "car ahead detected !!! " << endl;
         double safety_distance = 15.0; // for now, we consider a fix safety distance
         double target_distance = car_ahead_predictions.back().s - safety_distance - car_at_start.s;
         if (target_distance < s_incr && target_distance > 0) {
@@ -214,29 +220,33 @@ Vehicle BehaviorPlanner::get_desired_traj_end_position(int desired_lane, Vehicle
 vector<Vehicle> BehaviorPlanner::get_desired_trajectory(Vehicle car_at_start, Vehicle car_at_goal, int reaction_steps) {
 
     vector<Vehicle> trajectory = this->follow_old_trajectory(car_at_start, reaction_steps);
+
     int n_future_steps = TRAJ_N_STEPS - trajectory.size();
+    //cout << "follow_old_trajectory OK, n_future_steps: " << n_future_steps << endl;
 
     Vehicle car_at_start_ii = car_at_start;
     if(!trajectory.empty())
         car_at_start_ii = trajectory.back();
-    else
-        car_at_start_ii = car_at_start;
+
 
     vector<vector<double>> traj_second = this->_traj_gen.generate_new_trajectory(trajectory, car_at_start_ii, car_at_goal, n_future_steps);
     
+    cout << "generate_new_trajectory first s[0]: " << traj_second[0][0] << ", last s[" << n_future_steps << "]: " << traj_second[0][n_future_steps-1] << endl;
     for(int i = 1; i <= n_future_steps; i++) {
         Vehicle veh = car_at_start;
         veh.move_along_trajectory(traj_second[0], traj_second[1], i);
         trajectory.push_back(veh);
     }
-
+    cout << "final path trajectory size: " << trajectory.size() << endl;
+    cout << " -- car position at end of trajectory: " << endl;
+    cout << trajectory[49] << endl; 
     return trajectory;
 }
 
 vector<Vehicle> BehaviorPlanner::follow_old_trajectory(Vehicle car_at_start, size_t n_reaction_steps) {
 
   vector<vector<double>> old_traj = this->_traj_gen.get_previous_trajectory();
-  size_t steps = min(old_traj.size(), n_reaction_steps);
+  size_t steps = min(this->_traj_gen.get_length(), n_reaction_steps);
 
   vector<Vehicle> trajectory;
   // The car continues the old trajectory until the new trajectory starts after n_reaction_steps.
@@ -245,7 +255,6 @@ vector<Vehicle> BehaviorPlanner::follow_old_trajectory(Vehicle car_at_start, siz
     veh.move_along_trajectory(old_traj[0], old_traj[1], i);
     trajectory.push_back(veh);
   }
-
   return trajectory;
 }
 

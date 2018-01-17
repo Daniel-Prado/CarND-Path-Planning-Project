@@ -11,7 +11,7 @@ const int REACTION_STEPS = 10;
 const int TRAJ_N_STEPS = 50;
 const double LANE_WIDTH = 4.0;
 
-const double max_speed = 20.0;
+const double max_speed = 21.5;
 const double max_acc = 10.0;
 
 const auto lane_d = [](size_t lane) {

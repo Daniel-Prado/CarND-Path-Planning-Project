@@ -31,6 +31,8 @@ public:
     int        get_lane() const;
     void       move_along_trajectory(const vector<double>& traj_s, const vector<double>& traj_d, size_t steps);
 
+    friend std::ostream& operator<<(std::ostream& stream, const Vehicle& veh);
+
 
 };
 
