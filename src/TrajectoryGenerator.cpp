@@ -76,7 +76,7 @@ vector<vector<double>> TrajectoryGenerator::generate_new_trajectory(vector<Vehic
     }
 
     // The 3rd point will be the car at goal desired position.
-    pts_s.push_back(car_at_goal.s);
+    pts_s.push_back(max (car_at_goal.s, pts_s.back()+10));
     pts_d.push_back(car_at_goal.d);
 
     // 4th and 5th points will be in the same d position as the car_at_goal, 30m away each in s.
@@ -87,12 +87,15 @@ vector<vector<double>> TrajectoryGenerator::generate_new_trajectory(vector<Vehic
 
     // Create a spline
     tk::spline spl;
-    cout << "SPLINE pts_s: ";
-    for (auto &titi: pts_s)
+    /*
+    cout << "SPLINE pts_d: ";
+    
+    for (auto &titi: pts_d)
     {
             cout << titi << " ";
     }
     cout << endl;
+    */
 
     spl.set_points(pts_s, pts_d);
 

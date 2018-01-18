@@ -7,12 +7,15 @@
 #include "TrajectoryGenerator.h"
 #include "RoadMap.h"
 
-const int REACTION_STEPS = 10;
-const int TRAJ_N_STEPS = 50;
+const int REACTION_STEPS = 20;
+const int TRAJ_N_STEPS = 80;
 const double LANE_WIDTH = 4.0;
 
-const double max_speed = 21.5;
-const double max_acc = 10.0;
+const double max_speed = 21.0;
+const double max_acc = 8.0;
+
+const double s_collision_range = 8.0;
+const double d_collision_range = 3;
 
 const auto lane_d = [](size_t lane) {
   return lane * LANE_WIDTH + LANE_WIDTH / 2;
@@ -24,6 +27,12 @@ enum class Lane {
 
 enum class LaneStates {
 	KL, PLCL, PLCR, LCL, LCR
+};
+
+template<typename T>
+std::ostream& operator<<(typename std::enable_if<std::is_enum<T>::value, std::ostream>::type& stream, const T& e)
+{
+    return stream << static_cast<typename std::underlying_type<T>::type>(e);
 };
 
 
@@ -40,9 +49,12 @@ private:
 	LaneStates state;
 
   	vector<Vehicle> 	generate_prediction(Vehicle& vehicle, size_t horizon_steps);
-	vector<LaneStates>	successor_states();
-	vector<Vehicle> 	generate_trajectory(LaneStates state, const Vehicle& ego, const vector<vector<Vehicle>>& predictions);
+  	float 				calculate_cost(const Vehicle& car_at_start, const vector<Vehicle>& trajectory, const vector<vector<Vehicle>> &predictions);
+	vector<LaneStates>	successor_states(const int ego_lane);
+	vector<Vehicle> 	generate_trajectory(bool try_mode, LaneStates state, const Vehicle& ego, const vector<vector<Vehicle>>& predictions);
 	vector<Vehicle> 	keep_lane_trajectory(const Vehicle& ego, const vector<vector<Vehicle>>& predictions);
+	vector<Vehicle>		lane_change_trajectory(bool try_mode, LaneStates state, const Vehicle& ego, const vector<vector<Vehicle>>& predictions);
+	int 				detect_collision_in_trajectory(const vector<Vehicle>& ego_traj, const vector<vector<Vehicle>>& predictions); 
 	vector<Vehicle> 	find_vehicle_ahead_in_lane(int lane, double s, const vector<vector<Vehicle>> &predictions);
 	
 	Vehicle 			get_desired_traj_end_position(int desired_lane, Vehicle car_at_start, const vector<vector<Vehicle>> &predictions);

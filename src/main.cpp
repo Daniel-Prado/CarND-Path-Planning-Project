@@ -244,15 +244,16 @@ int main() {
 					auto sensor_fusion = j[1]["sensor_fusion"];
 
 					int prev_size = previous_path_x.size();
-					cout << "initial prev_size: " << prev_size << endl;
-                    cout << "sim.s: " << car_s << ",  sim.d:" <<car_d<< ", sim.speed: " << car_speed << endl;
-
+                    // DEBUG
+					//cout << "initial prev_size: " << prev_size << endl;
+                    //cout << "sim.s: " << car_s << ",  sim.d:" <<car_d<< ", sim.speed: " << car_speed << endl;
+                    
                     
                     /**************************************************************************
                      **   STEP 1 - Update ego vehicle position along the trajectory
                      **************************************************************************/
                     size_t steps_consumed = traj_generator.get_length() - previous_path_x.size();
-                    cout << "steps_consumed: " << steps_consumed << endl;
+                    // DEBUG cout << "steps_consumed: " << steps_consumed << endl;
                     if (steps_consumed > 0 ) {
                         // We need to update the current position of the vehicle along the previous trajectory.
                         // Note that we can do that because we know for sure that the position of the car cannot be outside of the 
@@ -266,7 +267,7 @@ int main() {
                         // data from the simulator.
                         ego.update_pos(car_s, car_d);
                         auto frenet_vel = road.get_frenet_vel(car_s, car_d, car_speed/2.24, deg2rad(car_yaw));
-                        cout << "frenet_vel: " << frenet_vel[0] << "#" << frenet_vel[1] << endl;
+                        // DEBUG cout << "frenet_vel: " << frenet_vel[0] << "#" << frenet_vel[1] << endl;
                         ego.update_vel(frenet_vel[0], frenet_vel[1]);
                     }
 
@@ -276,7 +277,7 @@ int main() {
                     // The previous_path_x provided by the simulator contains the points not yet 
                     // visited by the car, however our 'locally' stored previous_path_s and _d stores 
                     // the total N points, so let's aling that.
-                    cout << "calling traj_generator.update_previous_path(" << prev_size << ");" << endl;
+                    // DEBUG cout << "calling traj_generator.update_previous_path(" << prev_size << ");" << endl;
                     traj_generator.update_previous_path(prev_size);
 
                     /**************************************************************************
@@ -319,7 +320,7 @@ int main() {
 
 
                     auto plan = b_planner.make_plan(ego, predictions);
-                    cout << "plan made OK" << endl;
+                    //cout << "plan made OK" << endl;
 
                     /**************************************************************************
                      **  STEP 5 - Get an updated trajectory based on the new plan
