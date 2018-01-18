@@ -266,9 +266,9 @@ int main() {
                         // If there is not previous_trajectory, we just update the position based on the 
                         // data from the simulator.
                         ego.update_pos(car_s, car_d);
-                        auto frenet_vel = road.get_frenet_vel(car_s, car_d, car_speed/2.24, deg2rad(car_yaw));
+                        //auto frenet_vel = road.get_frenet_vel(car_s, car_d, car_speed/2.24, deg2rad(car_yaw));
                         // DEBUG cout << "frenet_vel: " << frenet_vel[0] << "#" << frenet_vel[1] << endl;
-                        ego.update_vel(frenet_vel[0], frenet_vel[1]);
+                        ego.update_vel(0.0, 0.0);
                     }
 
                     /*************************************************************************************

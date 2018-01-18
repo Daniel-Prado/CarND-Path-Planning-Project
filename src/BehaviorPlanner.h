@@ -11,7 +11,7 @@ const int REACTION_STEPS = 20;
 const int TRAJ_N_STEPS = 80;
 const double LANE_WIDTH = 4.0;
 
-const double max_speed = 21.0;
+const double max_speed = 20.5;
 const double max_acc = 8.0;
 
 const double s_collision_range = 8.0;

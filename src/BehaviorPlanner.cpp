@@ -301,7 +301,7 @@ Vehicle BehaviorPlanner::get_desired_traj_end_position(int desired_lane, Vehicle
         double safety_distance = 15.0; // for now, we consider a fix safety distance
         double target_distance = car_ahead_predictions.back().s - safety_distance - car_at_start.s;
         if (target_distance < s_incr && target_distance > 0) {
-            target_s_dot = car_ahead_predictions.back().s_dot;
+            target_s_dot = min(max_speed, car_ahead_predictions.back().s_dot);
             s_incr = target_distance;
         }
     }
