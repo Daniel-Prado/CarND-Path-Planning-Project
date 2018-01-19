@@ -40,7 +40,7 @@ vector<Vehicle> BehaviorPlanner::make_plan(const Vehicle& ego, const vector<vect
     // If we haven't completed a trajectory in course, better to complete it before changing it.
     if(ego.get_lane() != target_lane || fabs(ego.d - lane_d(ego.get_lane())) > LANE_WIDTH / 4) {
         // Get trajectory with the current state
-        cout << "maneuver ongoing, target_lane:" << target_lane << endl;
+        cout << "CHANGING LANE, target_lane:" << target_lane << endl;
         vector<Vehicle> trajectory = this->generate_trajectory(false, state, ego, predictions);
         return trajectory;
     }
@@ -51,16 +51,28 @@ vector<Vehicle> BehaviorPlanner::make_plan(const Vehicle& ego, const vector<vect
 
     vector<LaneStates> states = successor_states(ego.get_lane());
 
-    cout << "target_lane: " << target_lane << ", trying states...." << endl;
+    float best_cost = std::numeric_limits<float>::max();
+    vector<Vehicle> best_trajectory = {};
+    LaneStates best_state;
+
     for (auto &st_it : states) {
-        cout << "  --state to try: " << st_it << ", target_lane:" << target_lane << endl;
         vector<Vehicle> trajectory = this->generate_trajectory(true, st_it, ego, predictions);
         if (trajectory.size() != 0) {
             cost = calculate_cost(ego, trajectory, predictions);
-            costs.push_back(cost);
-            final_trajectories.push_back(trajectory);
+            cout << "Tried state " << st_it << ", target_lane:" << target_lane << "  cost: " << cost << endl;
+            if (cost < (best_cost-1.0)) {
+                best_trajectory = trajectory;
+                best_cost = cost-1.0;
+                best_state = st_it;
+            }
+            //costs.push_back(cost);
+            //final_trajectories.push_back(trajectory);
         }
     }
+
+    this-> state = best_state;
+    this-> target_lane = best_trajectory.back().get_lane();
+    return best_trajectory;
 
     
     //PROVISIONAL /////////
@@ -76,8 +88,7 @@ vector<Vehicle> BehaviorPlanner::make_plan(const Vehicle& ego, const vector<vect
     */
     //////////////////////
 
-
-
+    /*
     vector<float>::iterator best_cost = min_element(begin(costs), end(costs));
     int best_idx = distance(begin(costs), best_cost);
     cout << endl << "Current State: " << state;
@@ -85,19 +96,44 @@ vector<Vehicle> BehaviorPlanner::make_plan(const Vehicle& ego, const vector<vect
     cout << ", next state: " << state << endl;
     this->target_lane = final_trajectories[best_idx].back().get_lane();
     return final_trajectories[best_idx];
+    */
 }
 
 float BehaviorPlanner::calculate_cost(const Vehicle& car_at_start, const vector<Vehicle>& trajectory, const vector<vector<Vehicle>> &predictions) {
 
+    float cost_collision = 0;
+    if (detect_collision_in_trajectory(trajectory, predictions))
+    {
+        cost_collision = 100000;
+        return cost_collision;
+    }
     Vehicle car_at_goal = trajectory.back();
-
     float cost_speed = 100 * max ((max_speed - car_at_goal.s_dot) / max_speed, 0.0 );
 
-    float cost_collision = 0;
-    if (detect_collision_in_trajectory(trajectory, predictions) >= 0 )
-        cost_collision = 100000;
+    float cost_busy_lane = 0;
+    vector<Vehicle> car_ahead_predictions = find_vehicle_ahead_in_lane(car_at_goal.get_lane(), car_at_start.s, predictions);
+    if (!car_ahead_predictions.empty()) {
+        float dist = static_cast<float>(car_ahead_predictions.back().s - car_at_start.s); // the farther future pos it will be compared with our initial pos, the better.
+        
+        //Example costs for this function:
+        //   dist = 0 :  cost = 500
+        //   dist = 10:  cost = 377.5
+        //   dist = 20:  cost = 268.9
+        //   dist = 50:  cost = 75.8
+        //   dist = 100: cost = 6.7
+        if (dist < 100) // ignore traffic farther than 100m ahead.
+            cost_busy_lane = 1000.0 / (1 + exp(dist/20));
+    }else
+        cost_busy_lane = 0;
 
-    return cost_speed + cost_collision;
+    //marginal cost for changing lane.
+    float cost_change_lane;
+    if (car_at_goal.get_lane()!= car_at_start.get_lane())
+        cost_change_lane = 10;
+
+    cout << " --Costs for lane " << car_at_goal.get_lane() << " | cost_speed: " << cost_speed << " | cost_busy:" << cost_busy_lane << endl;
+
+    return cost_speed + cost_busy_lane + cost_change_lane;
 }
 
 vector<LaneStates> BehaviorPlanner::successor_states(const int ego_lane) {
@@ -224,10 +260,10 @@ vector<Vehicle> BehaviorPlanner::lane_change_trajectory(bool try_mode, LaneState
     if (try_mode) {
         if (state == LaneStates::LCL) {
             line_to_try = target_lane - 1;
-            cout << "ego.get_lane: " << ego.get_lane() << ", trying LCL, lane: " << line_to_try << endl;
+            //cout << "ego.get_lane: " << ego.get_lane() << ", trying LCL, lane: " << line_to_try << endl;
         } else if (state == LaneStates::LCR) {
             line_to_try = target_lane + 1;
-            cout << "ego.get_lane: " << ego.get_lane() << ", trying LCR, lane: " << line_to_try << endl;
+            //cout << "ego.get_lane: " << ego.get_lane() << ", trying LCR, lane: " << line_to_try << endl;
         }
     }
     else
@@ -240,10 +276,9 @@ vector<Vehicle> BehaviorPlanner::lane_change_trajectory(bool try_mode, LaneState
     return best_trajectory;
 }
 
-int BehaviorPlanner::detect_collision_in_trajectory(const vector<Vehicle>& ego_traj, const vector<vector<Vehicle>>& predictions) {
+bool BehaviorPlanner::detect_collision_in_trajectory(const vector<Vehicle>& ego_traj, const vector<vector<Vehicle>>& predictions) {
 
     int length = ego_traj.size();
-    int collision_idx = -1;
     bool collision = false;
     int i = 0;
     for (const vector<Vehicle> &prediction : predictions) {
@@ -256,11 +291,8 @@ int BehaviorPlanner::detect_collision_in_trajectory(const vector<Vehicle>& ego_t
         }
         if (collision) break;
     }
-    if (collision)
-        collision_idx = i - 1;
 
-
-    return collision_idx;
+    return collision;
 }
 
 vector<Vehicle> BehaviorPlanner::find_vehicle_ahead_in_lane(int lane, double s, const vector<vector<Vehicle>> &predictions) {
@@ -296,10 +328,14 @@ Vehicle BehaviorPlanner::get_desired_traj_end_position(int desired_lane, Vehicle
     // Find car ahead
     vector<Vehicle> car_ahead_predictions = find_vehicle_ahead_in_lane(desired_lane, car_at_start.s, predictions);
     
+    double safety = safety_distance;
+    // We relax the safety distance conditions when changing lanes. 20m by default, when changing lanes, 50%:
+    if(desired_lane != car_at_start.get_lane())
+        safety = .5 * safety_distance; 
+
     if (!car_ahead_predictions.empty()) {
         // DEBUG cout << "car ahead detected !!! " << endl;
-        double safety_distance = 15.0; // for now, we consider a fix safety distance
-        double target_distance = car_ahead_predictions.back().s - safety_distance - car_at_start.s;
+        double target_distance = car_ahead_predictions.back().s - safety - car_at_start.s;
         if (target_distance < s_incr && target_distance > 0) {
             target_s_dot = min(max_speed, car_ahead_predictions.back().s_dot);
             s_incr = target_distance;
@@ -321,14 +357,16 @@ Vehicle BehaviorPlanner::get_desired_traj_end_position(int desired_lane, Vehicle
     car_at_goal.d = target_d;
     car_at_goal.d_dot = 0;
     car_at_goal.d_ddot = 0;
-    //car_at_goal.d_ddot = 0.8 * max_acc * (start.d - target_d) / LANE_WIDTH;
+    // we consider a negative acceleration in the d coordinate because that's logical when "braking" in the d coordinate
+    // in order to stay in that lane.
+    car_at_goal.d_ddot = 0.5 * max_acc * (car_at_start.d - target_d) / LANE_WIDTH;
     
     return car_at_goal;
 }
 
 vector<Vehicle> BehaviorPlanner::get_desired_trajectory(Vehicle car_at_start, Vehicle car_at_goal, int reaction_steps) {
 
-    vector<Vehicle> trajectory = this->follow_old_trajectory(car_at_start, reaction_steps);
+    vector<Vehicle> trajectory = this->follow_old_trajectory(car_at_start, car_at_goal, reaction_steps);
 
     int n_future_steps = TRAJ_N_STEPS - trajectory.size();
     //cout << "follow_old_trajectory OK, n_future_steps: " << n_future_steps << endl;
@@ -354,7 +392,7 @@ vector<Vehicle> BehaviorPlanner::get_desired_trajectory(Vehicle car_at_start, Ve
     return trajectory;
 }
 
-vector<Vehicle> BehaviorPlanner::follow_old_trajectory(Vehicle car_at_start, size_t n_reaction_steps) {
+vector<Vehicle> BehaviorPlanner::follow_old_trajectory(Vehicle car_at_start, Vehicle car_at_goal, size_t n_reaction_steps) {
 
   vector<vector<double>> old_traj = this->_traj_gen.get_previous_trajectory();
   size_t steps = min(this->_traj_gen.get_length(), n_reaction_steps);
@@ -363,7 +401,12 @@ vector<Vehicle> BehaviorPlanner::follow_old_trajectory(Vehicle car_at_start, siz
   // The car continues the old trajectory until the new trajectory starts after n_reaction_steps.
   for(int i = 1; i <= steps; i++) {
     Vehicle veh = car_at_start;
-    veh.move_along_trajectory(old_traj[0], old_traj[1], i);
+    // we need to be careful not no approach too much to the s goal using the OLD trajectory
+    // for that we want to use the new one.
+    //if (old_traj[i][0] < car_at_goal.s-3.0) 
+        veh.move_along_trajectory(old_traj[0], old_traj[1], i);
+    //else
+    //    break;
     trajectory.push_back(veh);
   }
   return trajectory;

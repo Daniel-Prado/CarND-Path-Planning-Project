@@ -76,7 +76,7 @@ vector<vector<double>> TrajectoryGenerator::generate_new_trajectory(vector<Vehic
     }
 
     // The 3rd point will be the car at goal desired position.
-    pts_s.push_back(max (car_at_goal.s, pts_s.back()+10));
+    pts_s.push_back(max (car_at_goal.s, pts_s.back()+15));
     pts_d.push_back(car_at_goal.d);
 
     // 4th and 5th points will be in the same d position as the car_at_goal, 30m away each in s.
