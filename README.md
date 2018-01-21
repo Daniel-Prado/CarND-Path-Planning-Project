@@ -36,7 +36,7 @@ This details the sequence of operations, at a high level, implemented in `main.c
 ### Predictions
 The prediction of the movement of sensor fussion vehicles is done in a simple way, just taking into account the instantanious (current) speed of the vehicle along the `s` coordinate.
 Also, I was forced to ignore the speed in the `d` coordinate. This is because the cars oscillate quite a lot in the `d` direction while keeping the lane, hence making prediction based only on the d_dot instant speed leads to wrong conclussions (such as lane changes that in practice happen very rarely).  This could be improved in a future version analyzing the positions along time, applying some low-pass filter, or even using some more sofisticated predictor (Naive Bayes or other machine learning algorithm).
-The code can be checked [here](src/BehaviorPlanner.cpp#L16-35) and [here](src/Vehicle.cpp#L24-L32).
+The code can be checked [here](src/BehaviorPlanner.cpp#L16-L35) and [here](src/Vehicle.cpp#L24-L32).
 
 ### Plan Decission
 The code for the plan path decission making at high level is implemented in this [function](src/BehaviorPlanner.cpp#L38-L91). Basically, for the given state and lane, we get the list of successor states. For every successor state, we calculate a possible trajectory. For every trajectory, we calculate its cost, and finally, we determine the next cycle target lane, state, and path trajectory that minimizes the cost.
@@ -46,11 +46,11 @@ Note that the __state machine__ implemented has only 3 states: KL(Keep Lane), (L
 
 
 ### Target position & Trajectory Calculation
-As mentioned before, I used the provided SPLINE library to generate trajectories. The code can be checked [here](src/TrajectoryGenerator.cpp#L37-134). The first two points of the spline are taken from the previous trajectory, and then the other 3 points are equally spaced every 30m, with a 'd' coordinate equal to the target lane of the trajectory. This separation has empirically shown to be adequate to ensure low acceleration and jerk, as seen in the teacher's Q&A session. I preferred this option of working exclusively in Frenet instead of using Car XY coordinates as shown in the Q&A. The advantage of using Frenet, is that we can space the points along the S coordinate exactly using the law's movement of phisics, taking into account the speed and the acceleration of the car, instead of doing that in an 'x' axis and projecting over the 's' curve.
+As mentioned before, I used the provided SPLINE library to generate trajectories. The code can be checked [here](src/TrajectoryGenerator.cpp#L37-L134). The first two points of the spline are taken from the previous trajectory, and then the other 3 points are equally spaced every 30m, with a 'd' coordinate equal to the target lane of the trajectory. This separation has empirically shown to be adequate to ensure low acceleration and jerk, as seen in the teacher's Q&A session. I preferred this option of working exclusively in Frenet instead of using Car XY coordinates as shown in the Q&A. The advantage of using Frenet, is that we can space the points along the S coordinate exactly using the law's movement of phisics, taking into account the speed and the acceleration of the car, instead of doing that in an 'x' axis and projecting over the 's' curve.
 Once the spline is calculated, note that the positions along the trajectory are calculated based on 'goal' or 'target' position, that will depend on the lane and the position of the leading car. This 'goal' is calculated [here](src/BehaviorPlanner.cpp#L349-L374).
 
 ### Cost Function
-The cost function implemented is composed of several terms. Check the code [here](src/BehaviorPlanner.cpp#L104-144):
+The cost function implemented is composed of several terms. Check the code [here](src/BehaviorPlanner.cpp#L104-L144):
 * __Collision__: is a collision is detected, the cost is maximum (100,000) and other terms are ignored.
 * __Speed__: the speed at the target position of the trajectory is evaluated and compared with the maximum possible speed. The cost is proportional to that difference.
 * __Traffic__: (cost_busy_lane in the code): the traffic ahead of the target lane is evaluated, even if it doesn't immediately affect the current trajectory. The cost is calculated as a sigmoid function based on the distance to the ahead traffic.
