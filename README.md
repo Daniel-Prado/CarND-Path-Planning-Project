@@ -7,7 +7,9 @@
 ### Simulator.
 You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab (https://github.com/udacity/self-driving-car-sim/releases).
 
-### Solution General Approach
+## Reflection
+
+### General Approach
 In this project I have tried to apply most of the concepts discussed in the Path Planning lessons, hence, I have tried to implemented all the different modules of a Path Planning system in a self-driving car, and the structure of classes of the code reflects that modularity:
 
 * **VEHICLE**: this is the class that represents all the cars as objects, for both the Ego car, and the cars detected in the sensor fusion data (stored as a vector of Vehicle class objects. The status of a Vehicle is represented by `s`, `s_dot`, `s_ddot`, `d`, `d_dot` and `d_ddot`.
