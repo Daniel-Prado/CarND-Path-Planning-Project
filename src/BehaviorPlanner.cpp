@@ -102,18 +102,20 @@ vector<Vehicle> BehaviorPlanner::make_plan(const Vehicle& ego, const vector<vect
 float BehaviorPlanner::calculate_cost(const Vehicle& car_at_start, const vector<Vehicle>& trajectory, const vector<vector<Vehicle>> &predictions) {
 
     float cost_collision = 0;
-    if (detect_collision_in_trajectory(trajectory, predictions))
-    {
-        cost_collision = 100000;
-        return cost_collision;
+    if(car_at_start.get_lane() != trajectory.back().get_lane()) {
+        if (detect_collision_in_trajectory(trajectory, predictions))
+        {
+            cost_collision = 100000;
+            return cost_collision;
+        }
     }
     Vehicle car_at_goal = trajectory.back();
-    float cost_speed = 100 * max ((max_speed - car_at_goal.s_dot) / max_speed, 0.0 );
+    float cost_speed = 500 * max ((max_speed - car_at_goal.s_dot) / max_speed, 0.0 );
 
     float cost_busy_lane = 0;
     vector<Vehicle> car_ahead_predictions = find_vehicle_ahead_in_lane(car_at_goal.get_lane(), car_at_start.s, predictions);
     if (!car_ahead_predictions.empty()) {
-        float dist = static_cast<float>(car_ahead_predictions.back().s - car_at_start.s); // the farther future pos it will be compared with our initial pos, the better.
+        float dist = static_cast<float>(RoadMap::safe_diff(car_ahead_predictions.back().s, car_at_start.s)); // the farther future pos it will be compared with our initial pos, the better.
         
         //Example costs for this function:
         //   dist = 0 :  cost = 500
@@ -127,9 +129,9 @@ float BehaviorPlanner::calculate_cost(const Vehicle& car_at_start, const vector<
         cost_busy_lane = 0;
 
     //marginal cost for changing lane.
-    float cost_change_lane;
+    float cost_change_lane = 0;
     if (car_at_goal.get_lane()!= car_at_start.get_lane())
-        cost_change_lane = 10;
+        cost_change_lane = 20;
 
     cout << " --Costs for lane " << car_at_goal.get_lane() << " | cost_speed: " << cost_speed << " | cost_busy:" << cost_busy_lane << endl;
 
@@ -278,16 +280,29 @@ vector<Vehicle> BehaviorPlanner::lane_change_trajectory(bool try_mode, LaneState
 
 bool BehaviorPlanner::detect_collision_in_trajectory(const vector<Vehicle>& ego_traj, const vector<vector<Vehicle>>& predictions) {
 
+    //size_t length = min<unsigned long>(20, ego_traj.size());
     int length = ego_traj.size();
     bool collision = false;
     int i = 0;
     for (const vector<Vehicle> &prediction : predictions) {
         i = 0;
         while (!collision && i < length) {
-            if(fabs(ego_traj[i].s - prediction[i].s) < s_collision_range && fabs(ego_traj[i].d - prediction[i].d) < d_collision_range) {
+            // note that we use prediction[0].d instead of prediction[i].d because the prediction in d coordinate is not reliable.
+            if(fabs(RoadMap::safe_diff(ego_traj[i].s, prediction[i].s)) < s_collision_range && fabs(ego_traj[i].d - prediction[0].d) < d_collision_range) {
+                cout << "DETECTED COLLISION TYPE 1" << endl;
+                cout << " -- between car "<< prediction[0] << "and ego " << ego_traj[0] << endl;
                 collision = true;
             }
             i++;
+        }
+        // The trajectory check above sometimes can fail if the speed prediction of the other cars, specially in the d coordinate, is wrong.
+        // So, we will treat any car at the sides like a collision.
+        if (!collision) {
+            if(fabs(RoadMap::safe_diff(ego_traj[0].s, prediction[0].s)) < s_collision_range && fabs(ego_traj[0].d - prediction[0].d) < 1.2*LANE_WIDTH) {
+                if (ego_traj.back().get_lane() == prediction[0].get_lane())
+                    cout << "DETECTED COLLISION TYPE 2" << endl;
+                    collision = true;
+            }
         }
         if (collision) break;
     }
@@ -297,7 +312,7 @@ bool BehaviorPlanner::detect_collision_in_trajectory(const vector<Vehicle>& ego_
 
 vector<Vehicle> BehaviorPlanner::find_vehicle_ahead_in_lane(int lane, double s, const vector<vector<Vehicle>> &predictions) {
 
-    double car_ahead_dist = 6945.554; // max s of the circuit.
+    double car_ahead_dist = circuit_max_s;
 
     vector<Vehicle> car_ahead_predictions;
     for (const vector<Vehicle> &prediction : predictions) {
@@ -305,7 +320,7 @@ vector<Vehicle> BehaviorPlanner::find_vehicle_ahead_in_lane(int lane, double s, 
         // hence, the [0] corresponds to the current position.
         // NOTE: As a future improvement, we could check if a car is predicted to be ahead at any given predicted position.
         if(lane == prediction[0].get_lane()) {
-            double dist = prediction[0].s - s;
+            double dist = RoadMap::safe_diff(prediction[0].s , s);
             if(dist < car_ahead_dist && dist >= 0) {
                 car_ahead_dist = dist;
                 car_ahead_predictions = prediction;
@@ -331,11 +346,10 @@ Vehicle BehaviorPlanner::get_desired_traj_end_position(int desired_lane, Vehicle
     double safety = safety_distance;
     // We relax the safety distance conditions when changing lanes. 20m by default, when changing lanes, 50%:
     if(desired_lane != car_at_start.get_lane())
-        safety = .5 * safety_distance; 
+        safety = .75 * safety_distance; 
 
     if (!car_ahead_predictions.empty()) {
-        // DEBUG cout << "car ahead detected !!! " << endl;
-        double target_distance = car_ahead_predictions.back().s - safety - car_at_start.s;
+        double target_distance = fabs(RoadMap::safe_diff(car_ahead_predictions.back().s, car_at_start.s) - safety);
         if (target_distance < s_incr && target_distance > 0) {
             target_s_dot = min(max_speed, car_ahead_predictions.back().s_dot);
             s_incr = target_distance;
@@ -351,7 +365,7 @@ Vehicle BehaviorPlanner::get_desired_traj_end_position(int desired_lane, Vehicle
         target_d = lane_d(car_at_start.get_lane());
     }
 
-    car_at_goal.s = car_at_start.s + s_incr;
+    car_at_goal.s = RoadMap::safe_s(car_at_start.s + s_incr);
     car_at_goal.s_dot = target_s_dot;
     car_at_goal.s_ddot = 0;
     car_at_goal.d = target_d;

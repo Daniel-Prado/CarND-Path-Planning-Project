@@ -3,19 +3,20 @@
 
 #include <iostream>
 #include <vector>
+#include "math.h"
 #include "Vehicle.h"
 #include "TrajectoryGenerator.h"
 #include "RoadMap.h"
 
 const int REACTION_STEPS = 15;
-const int TRAJ_N_STEPS = 75;
+const int TRAJ_N_STEPS = 70;
 const double LANE_WIDTH = 4.0;
 
-const double max_speed = 20.0;
+const double max_speed = 20.5;
 const double max_acc = 8.0;
 
-const double s_collision_range = 12.0;
-const double d_collision_range = 3;
+const double s_collision_range = 8.0;
+const double d_collision_range = 3.6;
 const double safety_distance = 20.0; // for now, we consider a fix safety distance
 
 const auto lane_d = [](size_t lane) {

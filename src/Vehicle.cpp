@@ -12,7 +12,7 @@ Vehicle::Vehicle(const int identifier){
 
 
 void Vehicle::update_pos(double s, double d) {
-    this->s = s;
+    this->s = RoadMap::safe_s(s);
     this->d = d;
 }
 
@@ -26,7 +26,7 @@ Vehicle Vehicle::position_after_n_seconds(double incr_time) {
   
   //  IN THIS FIRST IMPLEMENTATION WE ASSUME CONSTANT VELOCITY OF OTHER CARS
   //  AND NO LANE CHANGES. (Constant s speed, constant d position)
-  future_vehicle.s = s + incr_time * s_dot;
+  future_vehicle.s = RoadMap::safe_s(s + incr_time * s_dot);
   
   return future_vehicle;
 }
@@ -59,7 +59,7 @@ void Vehicle::move_along_trajectory(const vector<double>& traj_s, const vector<d
 
   if(index > 0) {
 
-    double s_dot = (traj_s[index] - traj_s[index - 1] )/ dt;
+    double s_dot = fabs(RoadMap::safe_diff(traj_s[index], traj_s[index - 1] ))/ dt;
     double d_dot = (traj_d[index] - traj_d[index - 1]) / dt;
     this->s_ddot = (s_dot - this->s_dot) / ((index + 1) * dt);
     this->d_ddot = (d_dot - this->d_dot) / ((index + 1) * dt);
@@ -68,7 +68,7 @@ void Vehicle::move_along_trajectory(const vector<double>& traj_s, const vector<d
     update_vel(s_dot, d_dot);
   
   } else if(index == 0) {
-    double s_dot = (traj_s[index] - this->s) / dt;
+    double s_dot = fabs(RoadMap::safe_diff(traj_s[index], this->s)) / dt;
     double d_dot = (traj_d[index] - this->d) / dt;
     this->s_ddot = (s_dot - this->s_dot) / dt;
     this->d_ddot = (d_dot - this->d_dot) / dt;

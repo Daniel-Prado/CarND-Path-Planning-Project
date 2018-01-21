@@ -13,6 +13,8 @@
 
 using namespace std;
 
+const double circuit_max_s = 6945.554;
+
 class RoadMap {
 public:
     //Constructor
@@ -25,6 +27,22 @@ public:
     vector<double> get_splined_xy(double s, double d);
 
     vector<double> get_frenet_vel(double s, double d, double speed, double car_to_map_yaw);
+
+    static inline double safe_s(double s) {
+        return ((s >= 0 && s < circuit_max_s) ? s : fmod(circuit_max_s + s, circuit_max_s));
+    }
+
+    static inline double safe_diff(double s1, double s2) {
+        double a = safe_s(s1);
+        double b = safe_s(s2);
+        double diff = a - b;
+        if(diff < -circuit_max_s / 2) // max_s/2 because that means half loop (closer from the other side)
+            diff += circuit_max_s;
+        if(diff > circuit_max_s / 2)
+            diff -= circuit_max_s;
+        return diff;
+    }
+
 
     vector<double> map_waypoints_x;
     vector<double> map_waypoints_y;

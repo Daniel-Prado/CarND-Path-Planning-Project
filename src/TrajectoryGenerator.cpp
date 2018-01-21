@@ -66,6 +66,10 @@ vector<vector<double>> TrajectoryGenerator::generate_new_trajectory(vector<Vehic
         double ref_s_prev = prev_trajectory[prev_size-2].s;
         double ref_d_prev = prev_trajectory[prev_size-2].d;
 
+        if (ref_s_prev > ref_s + circuit_max_s/2)
+            // In this case ref_s > 0 but ref_s_prev is close to circuit_max_s
+            ref_s_prev -= circuit_max_s; // it will be negative
+
         // use two points that make the path tangent to the previous path's end point slope.
         pts_s.push_back(ref_s_prev);
         pts_s.push_back(ref_s);
@@ -76,26 +80,32 @@ vector<vector<double>> TrajectoryGenerator::generate_new_trajectory(vector<Vehic
     }
 
     // The 3rd point will be the car at goal desired position.
-    pts_s.push_back(max (car_at_goal.s, pts_s.back()+15));
+    double s_goal = car_at_goal.s;
+    if (s_goal < (car_at_start.s - circuit_max_s/2))
+        s_goal += circuit_max_s;
+
+    double third_point = max (s_goal, pts_s.back()+30);
+
+    pts_s.push_back(third_point);
     pts_d.push_back(car_at_goal.d);
 
     // 4th and 5th points will be in the same d position as the car_at_goal, 30m away each in s.
-    pts_s.push_back(car_at_goal.s + 30.0);
+    pts_s.push_back(third_point + 30.0);
     pts_d.push_back(car_at_goal.d);
-    pts_s.push_back(car_at_goal.s + 60.0);
+    pts_s.push_back(third_point + 60.0);
     pts_d.push_back(car_at_goal.d);
 
     // Create a spline
     tk::spline spl;
-    /*
-    cout << "SPLINE pts_d: ";
+    /*if(car_at_start.s > 6850) {
+    /cout << "SPLINE pts_s: ";
     
-    for (auto &titi: pts_d)
-    {
-            cout << titi << " ";
-    }
-    cout << endl;
-    */
+        for (auto &titi: pts_s)
+        {
+                cout << titi << " ";
+        }
+        cout << endl;
+    }*/
 
     spl.set_points(pts_s, pts_d);
 
@@ -108,12 +118,13 @@ vector<vector<double>> TrajectoryGenerator::generate_new_trajectory(vector<Vehic
     // 10m/s2 . Maybe the code can be improved taking this into account, so that the points will not be evenly spaced.
 
     double t = 0.02 * n_steps;
-    double acc = 2*(car_at_goal.s - car_at_start.s - car_at_start.s_dot * t) / (t*t);
+    double acc = 2 * RoadMap::safe_diff(RoadMap::safe_diff(car_at_goal.s, car_at_start.s) , car_at_start.s_dot * t) / (t*t);
 
     for(int i = 1; i <= n_steps; i++) {
         t = i * 0.02;
         double s_spline = ref_s + (car_at_start.s_dot * t) + (0.5 * acc * t*t);
         double d_spline = spl(s_spline);
+        s_spline = RoadMap::safe_s(s_spline);
 
         next_s_vals.push_back(s_spline);
         next_d_vals.push_back(d_spline);
