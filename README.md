@@ -7,6 +7,38 @@
 ### Simulator.
 You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab (https://github.com/udacity/self-driving-car-sim/releases).
 
+### General Approach
+In this project I have tried to apply most of the concepts discussed in the Path Planning lessons, hence, I have tried to implemented all the different modules of a Path Planning system in a self-driving car, and the structure of classes of the code reflects that modularity:
+
+* **VEHICLE**: this is the class that represents all the cars as objects, for both the Ego car, and the cars detected in the sensor fusion data (stored as a vector of Vehicle class objects. The status of a Vehicle is represented by `s`, `s_dot`, `s_ddot`, `d`, `d_dot` and `d_ddot`.
+of the car it represents.The class has also another utility: it serves to define paths or trajectories, where every point in the path is an instance of Vehicle. For example, the predicted positions over a time span for a given car in the sensor fusion data are stored also as a vector of Vehicle objects.
+Note that all coordinates are stored exclusively in Frenet. This was a difficult decission, but I followed the advice of teachers to use Frenet to ease calculations. The drawback is that we cannot trust the XY coordinates given by the simulator. Instead, we based  new trajectory calculations at its start always based on the points of the previous trajectory.
+* **ROAD MAP**: this module loads the waypoint coordinates for the track given in a text file, and based on those, it calculates SPLINES that will serve later to transform any Frenet coordinates into XY coordinates. The reason is that the provided GetXY method doesn't work very well around the waypoints, causing 'jumps' and jerk when trying to feed the XY coordinates into the simulator. Instead, ALL the calculations are done in Frenet, and only converted to XY map coordinates before feeding the simulator.
+* **BEHAVIOR PLANNING**: this module provides all the necessary 'brain' functions for the path planning algorithm (which is also implemented at a high level in the main.cpp file). The behaviour planner implements several functions that we will discuss later, such as:
+  - (Public) Data fussion vehicles prediction generation.
+  - (Public) Plan Decission (function make_plan)
+  - State Machine (successor states function).
+  - Possible collision detection.
+  - Cost Function calculation for a possible maneuver.
+  - Find vehicles ahead in a lane.
+  - New trajectory Generation.
+  - etc.
+* **TRAJECTORY GENERATOR** : this module calculates a path for the ego vehicle using SPLINES. The first two points of the spline are taken from the previous trajectory, and then the other 3 points are equally spaced every 30m, with a 'd' coordinate equal to the target lane of the trajectory. This separation has empirically shown to be adequate to ensure low acceleration and jerk, as seen in the teacher's Q&A session.
+
+### Sequence of Operations
+This details the sequence of operations, at a high level, implemented in `main.cpp`:
+1) [Update ego vehicle position along the trajectory](src/main.cpp#L253-L271): given the number of steps the car has moved along the previous trajectory (given by the simulator), we update our frenet position stored in memory, and get rid off the already consumed leg.
+2) [Refresh previous path](src/main.cpp#L275-L281): here we get rid off the part of the local Frenet previous trajectory that the car has already run.
+3) [Load Sensor fussion data]((src/main.cpp#L284-L310):  We load the other vehicles frenet coordinates into a vector of Vehicle objects. Note that in this implementation we work on a fresh new vector every cycle, hence we don't have history of the previous status.
+4) [Predict vehicles movement and decide new Plan](src/main.cpp#L312-L323) based on those predictions.
+5) [Get updated XY cartesian trajectory](src/main.cpp#L326-L350) based on the calculated plan path (frenet) and send it to the simulator.
+
+
+
+
+
+
+## Project Instructions:
 ### Goals
 In this project your goal is to safely navigate around a virtual highway with other traffic that is driving +-10 MPH of the 50 MPH speed limit. You will be provided the car's localization and sensor fusion data, there is also a sparse map list of waypoints around the highway. The car should try to go as close as possible to the 50 MPH speed limit, which means passing slower traffic when possible, note that other cars will try to change lanes too. The car should avoid hitting other cars at all cost as well as driving inside of the marked road lanes at all times, unless going from one lane to another. The car should be able to make one complete loop around the 6946m highway. Since the car is trying to go 50 MPH, it should take a little over 5 minutes to complete 1 loop. Also the car should not experience total acceleration over 10 m/s^2 and jerk that is greater than 10 m/s^3.
 
@@ -140,4 +172,3 @@ still be compilable with cmake and make./
 
 ## How to write a README
 A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
-
