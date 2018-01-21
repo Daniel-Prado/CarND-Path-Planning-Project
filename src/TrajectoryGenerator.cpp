@@ -84,7 +84,8 @@ vector<vector<double>> TrajectoryGenerator::generate_new_trajectory(vector<Vehic
     if (s_goal < (car_at_start.s - circuit_max_s/2))
         s_goal += circuit_max_s;
 
-    double third_point = max (s_goal, pts_s.back()+30);
+    //double third_point = max (s_goal, pts_s.back()+30);
+    double third_point = pts_s.back()+30;
 
     pts_s.push_back(third_point);
     pts_d.push_back(car_at_goal.d);

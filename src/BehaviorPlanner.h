@@ -9,6 +9,7 @@
 #include "RoadMap.h"
 
 const int REACTION_STEPS = 15;
+const int REACTION_TIME = REACTION_STEPS * 0.02;
 const int TRAJ_N_STEPS = 70;
 const double LANE_WIDTH = 4.0;
 
@@ -17,7 +18,7 @@ const double max_acc = 8.0;
 
 const double s_collision_range = 8.0;
 const double d_collision_range = 3.6;
-const double safety_distance = 20.0; // for now, we consider a fix safety distance
+const double safety_distance_fix = 15.0; // for now, we consider a fix safety distance
 
 const auto lane_d = [](size_t lane) {
   auto d = lane * LANE_WIDTH + LANE_WIDTH / 2;
@@ -55,17 +56,17 @@ private:
 	LaneStates state;
 
   	vector<Vehicle> 	generate_prediction(Vehicle& vehicle, size_t horizon_steps);
-  	float 				calculate_cost(const Vehicle& car_at_start, const vector<Vehicle>& trajectory, const vector<vector<Vehicle>> &predictions);
+  	float 				calculate_cost(const Vehicle& car_at_start, const Vehicle& car_at_goal, const vector<Vehicle>& trajectory, const vector<vector<Vehicle>> &predictions);
 	vector<LaneStates>	successor_states(const int ego_lane);
-	vector<Vehicle> 	generate_trajectory(bool try_mode, LaneStates state, const Vehicle& ego, const vector<vector<Vehicle>>& predictions);
-	vector<Vehicle> 	keep_lane_trajectory(const Vehicle& ego, const vector<vector<Vehicle>>& predictions);
-	vector<Vehicle>		lane_change_trajectory(bool try_mode, LaneStates state, const Vehicle& ego, const vector<vector<Vehicle>>& predictions);
+	vector<Vehicle> 	generate_trajectory(bool try_mode, LaneStates state, const Vehicle& ego, Vehicle& car_at_goal, const vector<vector<Vehicle>>& predictions);
+	vector<Vehicle> 	keep_lane_trajectory(const Vehicle& ego, Vehicle& car_at_goal, const vector<vector<Vehicle>>& predictions);
+	vector<Vehicle>		lane_change_trajectory(bool try_mode, LaneStates state, const Vehicle& ego, Vehicle& car_at_goal, const vector<vector<Vehicle>>& predictions);
 	bool				detect_collision_in_trajectory(const vector<Vehicle>& ego_traj, const vector<vector<Vehicle>>& predictions); 
 	vector<Vehicle> 	find_vehicle_ahead_in_lane(int lane, double s, const vector<vector<Vehicle>> &predictions);
 	
 	Vehicle 			get_desired_traj_end_position(int desired_lane, Vehicle car_at_start, const vector<vector<Vehicle>> &predictions);
 	vector<Vehicle>		get_desired_trajectory(Vehicle car_at_start, Vehicle car_at_goal, int reaction_steps);
-	vector<Vehicle> 	follow_old_trajectory(Vehicle car_at_start, Vehicle car_at_goal, size_t n_reaction_steps);
+	vector<Vehicle> 	follow_old_trajectory(Vehicle car_at_start, size_t n_reaction_steps);
 
 public:
 	vector<vector<Vehicle>> make_predictions(const vector<Vehicle> &vehicles, size_t horizon_steps);

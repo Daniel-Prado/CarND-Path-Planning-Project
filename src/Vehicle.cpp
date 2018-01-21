@@ -88,6 +88,6 @@ std::ostream &operator<<(std::ostream &stream, const Vehicle &veh) {
   stream << "d(" << fixed << veh.d <<"), d.(" << fixed << veh.d_dot << "), d..(" << fixed << veh.d_ddot <<") ** ";
   stream << "lane(" << veh.get_lane()<<")";
   
-  stream.precision(prev_precision);
+  //stream.precision(prev_precision);
   return stream;
 }
