@@ -7,7 +7,7 @@
 ### Simulator.
 You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab (https://github.com/udacity/self-driving-car-sim/releases).
 
-### General Approach
+### Solution General Approach
 In this project I have tried to apply most of the concepts discussed in the Path Planning lessons, hence, I have tried to implemented all the different modules of a Path Planning system in a self-driving car, and the structure of classes of the code reflects that modularity:
 
 * **VEHICLE**: this is the class that represents all the cars as objects, for both the Ego car, and the cars detected in the sensor fusion data (stored as a vector of Vehicle class objects. The status of a Vehicle is represented by `s`, `s_dot`, `s_ddot`, `d`, `d_dot` and `d_ddot`.
@@ -23,22 +23,42 @@ Note that all coordinates are stored exclusively in Frenet. This was a difficult
   - Find vehicles ahead in a lane.
   - New trajectory Generation.
   - etc.
-* **TRAJECTORY GENERATOR** : this module calculates a path for the ego vehicle using SPLINES. The first two points of the spline are taken from the previous trajectory, and then the other 3 points are equally spaced every 30m, with a 'd' coordinate equal to the target lane of the trajectory. This separation has empirically shown to be adequate to ensure low acceleration and jerk, as seen in the teacher's Q&A session.
+* **TRAJECTORY GENERATOR** : this module calculates a path for the ego vehicle using SPLINES.
 
 ### Sequence of Operations
 This details the sequence of operations, at a high level, implemented in `main.cpp`:
 1) [Update ego vehicle position along the trajectory](src/main.cpp#L253-L271): given the number of steps the car has moved along the previous trajectory (given by the simulator), we update our frenet position stored in memory, and get rid off the already consumed leg.
 2) [Refresh previous path](src/main.cpp#L275-L281): here we get rid off the part of the local Frenet previous trajectory that the car has already run.
-3) [Load Sensor fussion data]((src/main.cpp#L284-L310):  We load the other vehicles frenet coordinates into a vector of Vehicle objects. Note that in this implementation we work on a fresh new vector every cycle, hence we don't have history of the previous status.
+3) [Load Sensor fussion data](src/main.cpp#L284-L310):  We load the other vehicles frenet coordinates into a vector of Vehicle objects. Note that in this implementation we work on a fresh new vector every cycle, hence we don't have history of the previous status.
 4) [Predict vehicles movement and decide new Plan](src/main.cpp#L312-L323) based on those predictions.
 5) [Get updated XY cartesian trajectory](src/main.cpp#L326-L350) based on the calculated plan path (frenet) and send it to the simulator.
 
+### Predictions
+The prediction of the movement of sensor fussion vehicles is done in a simple way, just taking into account the instantanious (current) speed of the vehicle along the `s` coordinate.
+Also, I was forced to ignore the speed in the `d` coordinate. This is because the cars oscillate quite a lot in the `d` direction while keeping the lane, hence making prediction based only on the d_dot instant speed leads to wrong conclussions (such as lane changes that in practice happen very rarely).  This could be improved in a future version analyzing the positions along time, applying some low-pass filter, or even using some more sofisticated predictor (Naive Bayes or other machine learning algorithm).
+The code can be checked [here](src/BehaviorPlanner.cpp#L16-35) and [here](src/Vehicle.cpp#L24-L32).
+
+### Plan Decission
+The code for the plan path decission making at high level is implemented in this [function](src/BehaviorPlanner.cpp#L38-L91). Basically, for the given state and lane, we get the list of successor states. For every successor state, we calculate a possible trajectory. For every trajectory, we calculate its cost, and finally, we determine the next cycle target lane, state, and path trajectory that minimizes the cost.
+There is one exception: we want that once a decission is made to execute a lane change, we wait until the maneuver is finished before evaluating other options.
+
+Note that the __state machine__ implemented has only 3 states: KL(Keep Lane), (LCL)Lane Change Left and (LCR)Lane Change Right. A more sofisticated state machine including the Prepare LCL and Prepare LCR states is left for future improvements.
+
+
+### Target position & Trajectory Calculation
+As mentioned before, I used the provided SPLINE library to generate trajectories. The code can be checked [here](src/TrajectoryGenerator.cpp#L37-134). The first two points of the spline are taken from the previous trajectory, and then the other 3 points are equally spaced every 30m, with a 'd' coordinate equal to the target lane of the trajectory. This separation has empirically shown to be adequate to ensure low acceleration and jerk, as seen in the teacher's Q&A session. I preferred this option of working exclusively in Frenet instead of using Car XY coordinates as shown in the Q&A. The advantage of using Frenet, is that we can space the points along the S coordinate exactly using the law's movement of phisics, taking into account the speed and the acceleration of the car, instead of doing that in an 'x' axis and projecting over the 's' curve.
+Once the spline is calculated, note that the positions along the trajectory are calculated based on 'goal' or 'target' position, that will depend on the lane and the position of the leading car. This 'goal' is calculated [here](src/BehaviorPlanner.cpp#L349-L374).
+
+### Cost Function
+The cost function implemented is composed of several terms. Check the code [here](src/BehaviorPlanner.cpp#L104-144):
+* __Collision__: is a collision is detected, the cost is maximum (100,000) and other terms are ignored.
+* __Speed__: the speed at the target position of the trajectory is evaluated and compared with the maximum possible speed. The cost is proportional to that difference.
+* __Traffic__: (cost_busy_lane in the code): the traffic ahead of the target lane is evaluated, even if it doesn't immediately affect the current trajectory. The cost is calculated as a sigmoid function based on the distance to the ahead traffic.
+* __Central_lane__: This simply slightly favors the central lane over the left and right lanes, in situations where the cost is the same for the three of them (all lanes clear for example). I do this because the central lane has always 2 options to maneuver (left and right).
 
 
 
-
-
-## Project Instructions:
+# Project Instructions:
 ### Goals
 In this project your goal is to safely navigate around a virtual highway with other traffic that is driving +-10 MPH of the 50 MPH speed limit. You will be provided the car's localization and sensor fusion data, there is also a sparse map list of waypoints around the highway. The car should try to go as close as possible to the 50 MPH speed limit, which means passing slower traffic when possible, note that other cars will try to change lanes too. The car should avoid hitting other cars at all cost as well as driving inside of the marked road lanes at all times, unless going from one lane to another. The car should be able to make one complete loop around the 6946m highway. Since the car is trying to go 50 MPH, it should take a little over 5 minutes to complete 1 loop. Also the car should not experience total acceleration over 10 m/s^2 and jerk that is greater than 10 m/s^3.
 
