@@ -134,14 +134,14 @@ float BehaviorPlanner::calculate_cost(const Vehicle& car_at_start, const Vehicle
         cost_busy_lane = 0;
 
     //marginal cost for changing lane.
-    float cost_change_lane = 0;
-    if (car_at_goal.get_lane()!= car_at_start.get_lane())
-        cost_change_lane = 20;
+    float cost_not_central_lane = 0;
+    if (car_at_goal.get_lane()!= 1)
+        cost_not_central_lane = 10;
 
-    cout << " --COSTS/Target_lane: "  << car_at_goal.get_lane() << " | Total: "<< cost_speed+cost_busy_lane+cost_change_lane << " | cost_speed: " 
-         << cost_speed << " | cost_busy: " << cost_busy_lane << " | cost_change: " << cost_change_lane <<endl;
+    cout << " --COSTS/Target_lane: "  << car_at_goal.get_lane() << " | Total: "<< cost_speed+cost_busy_lane+cost_not_central_lane << " | cost_speed: " 
+         << cost_speed << " | cost_busy: " << cost_busy_lane << " | cost_not_central: " << cost_not_central_lane <<endl;
 
-    return cost_speed + cost_busy_lane + cost_change_lane;
+    return cost_speed + cost_busy_lane + cost_not_central_lane;
 }
 
 vector<LaneStates> BehaviorPlanner::successor_states(const int ego_lane) {
@@ -428,7 +428,7 @@ vector<Vehicle> BehaviorPlanner::follow_old_trajectory(Vehicle car_at_start, siz
   vector<vector<double>> old_traj = this->_traj_gen.get_previous_trajectory();
   size_t steps = min(this->_traj_gen.get_length(), n_reaction_steps);
 
-  vector<Vehicle> trajectory;
+  vector<Vehicle> trajectory = {};
   // The car continues the old trajectory until the new trajectory starts after n_reaction_steps.
   for(int i = 1; i <= steps; i++) {
     Vehicle veh = car_at_start;
