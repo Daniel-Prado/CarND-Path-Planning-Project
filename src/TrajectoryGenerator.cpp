@@ -85,15 +85,15 @@ vector<vector<double>> TrajectoryGenerator::generate_new_trajectory(vector<Vehic
         s_goal += circuit_max_s;
 
     //double third_point = max (s_goal, pts_s.back()+30);
-    double third_point = pts_s.back()+30;
+    double third_point = pts_s.back()+45;
 
     pts_s.push_back(third_point);
     pts_d.push_back(car_at_goal.d);
 
     // 4th and 5th points will be in the same d position as the car_at_goal, 30m away each in s.
-    pts_s.push_back(third_point + 30.0);
+    pts_s.push_back(third_point + 15.0);
     pts_d.push_back(car_at_goal.d);
-    pts_s.push_back(third_point + 60.0);
+    pts_s.push_back(third_point + 45.0);
     pts_d.push_back(car_at_goal.d);
 
     // Create a spline
