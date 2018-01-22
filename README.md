@@ -5,11 +5,14 @@
 #### Feb'2017 Cohort
    
 ### Simulator.
-You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab (https://github.com/udacity/self-driving-car-sim/releases).
+You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab (https://github.com/udacity/self-driving-car-sim/releases)].
 
 ## Reflection
 
-See the video below with an execution of aprox. 9 minutes and more than 6 miles without violations:
+### Intro
+This repository is my submission for the first project of the 3rd Term of Udacity's Self-Driving Car Nanodegree Program.
+My submitted implementation covers all aspects in the project rubric and results in a violation-free ride of at 6 miles or more (the minimum required being 4.32 miles) although I have obtained successful test of up to 15 miles.
+See the video below with an execution of more than 6 miles without violations (length of 8:30 minutes):
 
 [![Project 11 Output](https://img.youtube.com/vi/umOVXl00p3A/0.jpg)](https://www.youtube.com/watch?v=umOVXl00p3A)
 
