@@ -9,6 +9,10 @@ You can download the Term3 Simulator which contains the Path Planning Project fr
 
 ## Reflection
 
+See the video below with an execution of aprox. 9 minutes and more than 6 miles without violations:
+
+[![Project 11 Output](https://img.youtube.com/vi/umOVXl00p3A/0.jpg)](https://www.youtube.com/watch?v=umOVXl00p3A)
+
 ### General Approach
 In this project I have tried to apply most of the concepts discussed in the Path Planning lessons, hence, I have tried to implemented all the different modules of a Path Planning system in a self-driving car, and the structure of classes of the code reflects that modularity:
 
